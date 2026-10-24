@@ -14,31 +14,16 @@ export function validateNome(value: string): string {
   return '';
 }
 
-function isValidCPF(value: string): boolean {
-  const cpf = onlyDigits(value);
-
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
-    return false;
-  }
-
-  const calcDigit = (length: number): number => {
-    let sum = 0;
-    for (let i = 0; i < length; i++) {
-      sum += Number(cpf[i]) * (length + 1 - i);
-    }
-    const rest = (sum * 10) % 11;
-    return rest === 10 ? 0 : rest;
-  };
-
-  return calcDigit(9) === Number(cpf[9]) && calcDigit(10) === Number(cpf[10]);
-}
-
+// Projeto acadêmico: só confere o formato (11 dígitos), sem checar dígito
+// verificador — não é necessário que o CPF digitado seja um documento real.
 export function validateCPF(value: string): string {
-  if (!onlyDigits(value)) {
+  const digits = onlyDigits(value);
+
+  if (!digits) {
     return 'Informe seu CPF.';
   }
-  if (!isValidCPF(value)) {
-    return 'CPF inválido.';
+  if (digits.length !== 11) {
+    return 'CPF incompleto.';
   }
   return '';
 }

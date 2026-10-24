@@ -38,7 +38,7 @@ export const mockServices: Service[] = [
       'Rega e ajustes rápidos em vasos e canteiros'
     ],
     suggestedPrice: 120.00,
-    // image: require('../../assets/images/jardineiro.png') // Descomente quando tiver a imagem
+    image: require('../../assets/images/categorias/jardineiro.png'),
   },
   {
     id: '2',
@@ -47,16 +47,19 @@ export const mockServices: Service[] = [
     description: 'Limpeza para manter os ambientes da casa organizados e higienizados.',
     includedItems: ['Limpeza de quartos e salas', 'Higienização de banheiro e cozinha'],
     suggestedPrice: 130.00,
+    image: require('../../assets/images/categorias/faxina-residencial.jpg'),
   },
   {
     id: '3',
     title: 'Limpeza reforçada (pós obra)',
     basePrice: 'Sob consulta',
+    image: require('../../assets/images/categorias/limpeza-reforcada.jpg'),
   },
   {
     id: '4',
     title: 'Eletricista Residencial',
     basePrice: 'A partir de R$ 90',
+    image: require('../../assets/images/categorias/eletricista.jpg'),
   },
   {
     id: '5',
@@ -65,6 +68,7 @@ export const mockServices: Service[] = [
     description: 'Cuidado com suas roupas, incluindo lavagem e passagem das peças.',
     includedItems: ['Lavagem de roupas do dia a dia', 'Passagem e organização das peças'],
     suggestedPrice: 110.00,
+    image: require('../../assets/images/categorias/passadeira-lavadeira.jpg'),
   }
 ];
 

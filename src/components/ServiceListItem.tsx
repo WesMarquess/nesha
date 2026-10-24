@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { Service } from '../utils/mocks';
 import { useRouter } from 'expo-router';
@@ -53,6 +53,10 @@ export default function ServiceListItem({ service, selected, onToggleSelected }:
       {/* Conteúdo que só aparece se estiver expandido */}
       {isExpanded && (
         <View style={styles.expandedContent}>
+          {service.image && (
+            <Image source={service.image} style={styles.image} resizeMode="cover" />
+          )}
+
           {service.description && (
             <Text style={styles.description}>{service.description}</Text>
           )}
@@ -138,6 +142,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderColor: colors.border || '#EAEAEA',
+  },
+  image: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+    marginBottom: 16,
   },
   description: {
     fontSize: 13,
