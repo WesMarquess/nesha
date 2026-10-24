@@ -211,7 +211,7 @@ O app valida antes de enviar, mas só para dar resposta rápida. **O backend dev
 | Campo | Regra |
 |---|---|
 | `nome` | Obrigatório; pelo menos nome e sobrenome |
-| `cpf` | 11 dígitos; dígitos verificadores válidos; não pode ser sequência repetida (`11111111111`); único |
+| `cpf` | 11 dígitos; único (sem checagem de dígito verificador — projeto acadêmico, não precisa ser um CPF real) |
 | `telefone` | 10 ou 11 dígitos (DDD + número); DDD ≥ 11; com 11 dígitos, o terceiro dígito é `9` |
 | `email` | Formato válido; único |
 | `senha` | Mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial |
