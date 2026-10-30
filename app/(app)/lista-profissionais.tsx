@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../src/theme/colors';
 import { mockProfessionals, mockServices, Professional } from '../../src/utils/mocks';
+import {
+  CriterioProfissionais,
+  ESTRATEGIAS_PROFISSIONAIS,
+  ordenarProfissionais,
+} from '../../src/utils/ordenacaoProfissionais';
 
 export default function ListaProfissionaisScreen() {
   const router = useRouter();
   const { serviceIds } = useLocalSearchParams<{ serviceIds?: string }>();
   const selectedServices = mockServices.filter((service) => serviceIds?.split(',').includes(service.id));
+  const [criterio, setCriterio] = useState<CriterioProfissionais>('recomendados');
+  const profissionais = ordenarProfissionais(mockProfessionals, criterio);
 
   const renderCard = ({ item }: { item: Professional }) => (
     <View style={styles.card}>
@@ -77,23 +84,31 @@ export default function ListaProfissionaisScreen() {
         {/* Filtros (Tags) */}
         <View style={styles.tagsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={[styles.tag, styles.tagActive]}>
-              <Text style={styles.tagTextActive}>Mais recomendados</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tag}>
-              <Text style={styles.tagText}>Disponíveis hoje</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tag}>
-              <Text style={styles.tagText}>Menor preço</Text>
-            </TouchableOpacity>
+            {ESTRATEGIAS_PROFISSIONAIS.map((estrategia) => {
+              const ativo = estrategia.key === criterio;
+              return (
+                <TouchableOpacity
+                  key={estrategia.key}
+                  style={[styles.tag, ativo && styles.tagActive]}
+                  onPress={() => setCriterio(estrategia.key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: ativo }}
+                >
+                  <Text style={ativo ? styles.tagTextActive : styles.tagText}>{estrategia.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
         {/* Lista de Profissionais */}
         <FlatList
-          data={mockProfessionals}
+          data={profissionais}
           keyExtractor={item => item.id}
           renderItem={renderCard}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>Nenhum profissional atende hoje.</Text>
+          }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
         />
@@ -175,6 +190,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 24,
   },
   listContent: {
     paddingHorizontal: 24,

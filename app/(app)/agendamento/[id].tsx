@@ -14,6 +14,7 @@ import {
   primeiroNome,
   StatusAgendamento,
 } from '../../../src/data/agendamentos';
+import { estadoDe } from '../../../src/data/estadosAgendamento';
 import { useAgendamento } from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
 
@@ -48,6 +49,7 @@ export default function DetalhesAgendamentoCliente() {
     CANCELADO: ['Agendamento Cancelado', item.motivoCancelamento ?? 'Este serviço foi cancelado.'],
   };
   const [statusTitulo, statusSub] = titulo[item.status];
+  const estado = estadoDe(item);
 
   async function copiarTelefone() {
     await Clipboard.setStringAsync(item!.prestador.telefone);
@@ -115,7 +117,7 @@ export default function DetalhesAgendamentoCliente() {
           />
         </Card>
 
-        {(item.status === 'CONFIRMADO' || item.status === 'PENDENTE') && (
+        {estado.podeCancelar && (
           <Button
             title="Cancelar Agendamento"
             variant="danger"
@@ -123,7 +125,7 @@ export default function DetalhesAgendamentoCliente() {
           />
         )}
 
-        {item.status === 'CONCLUIDO' && (
+        {estado.podeAvaliar && (
           <Button
             title={item.avaliacao ? 'Serviço já avaliado' : 'Avaliar Serviço'}
             disabled={!!item.avaliacao}

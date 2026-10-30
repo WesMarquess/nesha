@@ -138,4 +138,5 @@ npx tsc --noEmit      # typecheck
 ## Documentação adicional
 
 - [`docs/API.md`](docs/API.md) — contrato de API entre app e backend
+- [`docs/DESIGN_PATTERNS.md`](docs/DESIGN_PATTERNS.md) — padrões de projeto fundamentais (State, Strategy, Observer, Adapter) e quando aplicá-los
 - [`backend/README.md`](backend/README.md) — detalhes do backend (variáveis de ambiente, estrutura, endpoints)

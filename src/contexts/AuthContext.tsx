@@ -14,7 +14,7 @@ import type { Usuario } from '../types/auth';
 
 type AuthContextValue = {
   usuario: Usuario | null;
-  loading: boolean;
+  loading: boolean; // true enquanto restaura a sessão salva ao abrir o app
   signIn: (email: string, senha: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -22,16 +22,8 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // 1. Usuário fictício iniciado automaticamente
-  const [usuario, setUsuario] = useState<Usuario | null>({
-    id: '1',
-    nome: 'Pedro',
-    email: 'pedro@email.com',
-    perfil: 'CLIENTE',
-  } as Usuario);
-  
-  // 2. Loading alterado para false
-  const [loading, setLoading] = useState(false);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const signOut = useCallback(async () => {
     setAuthToken(null);
@@ -39,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   }, []);
 
+  // Se qualquer rota protegida responder 401, encerra a sessão.
   useEffect(() => {
     setUnauthorizedHandler(() => {
       signOut();
@@ -48,35 +41,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ao abrir o app, restaura a sessão a partir do token salvo.
   useEffect(() => {
-    // BYPASS: Como não temos backend ainda, apenas finalizamos o loading imediatamente
-    setLoading(false);
-    
-    /* CÓDIGO ORIGINAL COMENTADO PARA NÃO PERDER:
     let active = true;
+
     async function restoreSession() {
       try {
         const token = await loadToken();
-        if (!token) return;
+        if (!token) {
+          return;
+        }
+
         setAuthToken(token);
         const me = await getMe();
-        if (active) setUsuario(me);
+        if (active) {
+          setUsuario(me);
+        }
       } catch (error) {
+        // 401: token inválido/expirado. Outros erros (ex.: sem internet) mantêm o token salvo.
         if (error instanceof ApiError && error.status === 401) {
           setAuthToken(null);
           await clearToken();
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
+
     restoreSession();
-    return () => { active = false; };
-    */
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const signIn = useCallback(async (email: string, senha: string) => {
     const resposta = await login({ email, senha });
 
+    // Este app é só da Área do Cliente.
     if (resposta.usuario.perfil !== 'CLIENTE') {
       throw new ApiError(
         403,
