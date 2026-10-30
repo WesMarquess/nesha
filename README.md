@@ -93,6 +93,9 @@ O celular é um dispositivo separado na rede, então `localhost` não funciona �
    ```bash
    # macOS
    ipconfig getifaddr en0
+
+   # Windows
+   ipconfig (endereço IPv4)
    ```
 
 2. Use esse IP no `.env.local`:
