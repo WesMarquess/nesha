@@ -8,8 +8,8 @@ import {
   useState,
 } from 'react';
 import { ApiError, setAuthToken, setUnauthorizedHandler } from '../services/api';
-import { getMe, login } from '../services/auth';
-import { clearToken, loadToken, saveToken } from '../services/session';
+import { login } from '../services/auth';
+import { clearToken, saveToken } from '../services/session';
 import type { Usuario } from '../types/auth';
 
 type AuthContextValue = {
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } as Usuario);
   
   // 2. Loading alterado para false
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   const signOut = useCallback(async () => {
     setAuthToken(null);
@@ -46,12 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [signOut]);
 
-  // Ao abrir o app, restaura a sessão a partir do token salvo.
-  useEffect(() => {
-    // BYPASS: Como não temos backend ainda, apenas finalizamos o loading imediatamente
-    setLoading(false);
-    
-    /* CÓDIGO ORIGINAL COMENTADO PARA NÃO PERDER:
+  // BYPASS: sem backend, a sessão começa com o usuário fictício acima e
+  // loading = false, então não há sessão a restaurar ao abrir o app.
+  // Para reativar a restauração pelo token salvo, troque o bloco abaixo por um
+  // useEffect e volte a importar getMe (services/auth) e loadToken (services/session).
+  /* CÓDIGO ORIGINAL COMENTADO PARA NÃO PERDER:
     let active = true;
     async function restoreSession() {
       try {
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restoreSession();
     return () => { active = false; };
     */
-  }, []);
 
   const signIn = useCallback(async (email: string, senha: string) => {
     const resposta = await login({ email, senha });
