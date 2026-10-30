@@ -69,7 +69,12 @@ export default function AgendaPrestador() {
             <Card>
               <View style={styles.monthRow}>
                 <Text style={styles.month}>{MES}</Text>
-                <TouchableOpacity onPress={() => setDiaSelecionado(HOJE)}>
+                <TouchableOpacity
+                  onPress={() => setDiaSelecionado(HOJE)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ir para hoje"
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                   <Text style={styles.today}>Hoje</Text>
                 </TouchableOpacity>
               </View>
@@ -82,6 +87,9 @@ export default function AgendaPrestador() {
                       key={dia}
                       style={styles.dayWrap}
                       onPress={() => setDiaSelecionado(dia)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${sigla}, dia ${dia}`}
+                      accessibilityState={{ selected: selecionado }}
                     >
                       <Text style={styles.dayLabel}>{sigla}</Text>
                       <View style={[styles.day, selecionado && styles.daySelected]}>

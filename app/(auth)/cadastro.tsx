@@ -557,6 +557,9 @@ export default function Cadastro() {
               activeOpacity={0.7}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: accepted }}
+              accessibilityLabel="Li e concordo com os Termos de Uso e a Política de Privacidade"
+              // A caixa tem 22 de lado; o hitSlop leva a área de toque a 48.
+              hitSlop={{ top: 13, bottom: 13, left: 13, right: 13 }}
             >
               {accepted && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
             </TouchableOpacity>
@@ -582,6 +585,9 @@ export default function Cadastro() {
             onPress={handleSubmit}
             disabled={submitting}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Criar minha conta Nesha"
+            accessibilityState={{ disabled: submitting, busy: submitting }}
           >
             {submitting ? (
               <ActivityIndicator color={colors.primaryText} />
@@ -592,7 +598,12 @@ export default function Cadastro() {
 
           <View style={styles.loginRow}>
             <Text style={styles.loginText}>Já tem conta? </Text>
-            <TouchableOpacity onPress={goToLogin}>
+            <TouchableOpacity
+              onPress={goToLogin}
+              accessibilityRole="button"
+              accessibilityLabel="Fazer login"
+              hitSlop={{ top: 12, bottom: 12 }}
+            >
               <Text style={styles.link}>Fazer Login →</Text>
             </TouchableOpacity>
           </View>

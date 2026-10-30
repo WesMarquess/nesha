@@ -24,11 +24,20 @@ export default function AvaliacoesScreen() {
         
         {/* Cabeçalho */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Feather name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Todas as avaliações</Text>
-          <TouchableOpacity style={styles.iconButtonOutline}>
+          <TouchableOpacity
+            style={styles.iconButtonOutline}
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar avaliações"
+          >
             <Feather name="share-2" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -50,7 +59,7 @@ export default function AvaliacoesScreen() {
             <Text style={styles.ratingBig}>{prof.rating}</Text>
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map((star) => (
-                <Feather key={star} name="star" size={14} color="#F2C94C" />
+                <Feather key={star} name="star" size={14} color={colors.star} />
               ))}
             </View>
             <Text style={styles.reviewsCountText}>{prof.reviewsCount} avaliações</Text>
@@ -64,13 +73,13 @@ export default function AvaliacoesScreen() {
 
         {/* Filtros */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
-          <TouchableOpacity style={[styles.tag, styles.tagActive]}>
+          <TouchableOpacity style={[styles.tag, styles.tagActive]} accessibilityRole="button" accessibilityState={{ selected: true }}>
             <Text style={styles.tagTextActive}>Mais recentes</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tag}>
+          <TouchableOpacity style={styles.tag} accessibilityRole="button" accessibilityState={{ selected: false }}>
             <Text style={styles.tagText}>Maiores notas</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tag}>
+          <TouchableOpacity style={styles.tag} accessibilityRole="button" accessibilityState={{ selected: false }}>
             <Text style={styles.tagText}>Menores notas</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -97,7 +106,7 @@ export default function AvaliacoesScreen() {
 
               <View style={styles.reviewRatingRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Feather key={star} name="star" size={14} color={star <= review.rating ? "#F2C94C" : "#E0E0E0"} />
+                  <Feather key={star} name="star" size={14} color={star <= review.rating ? colors.star : colors.border} />
                 ))}
                 <Text style={styles.reviewRatingText}>{review.rating.toFixed(1)}</Text>
               </View>
@@ -133,7 +142,7 @@ const styles = StyleSheet.create({
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   barLabel: { fontSize: 10, color: colors.textMuted, width: 50 },
   barTrack: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginHorizontal: 8 },
-  barFill: { height: 6, backgroundColor: '#F2C94C', borderRadius: 3 },
+  barFill: { height: 6, backgroundColor: colors.star, borderRadius: 3 },
   barNumber: { fontSize: 10, color: colors.text, width: 16, textAlign: 'right' },
 
   filtersScroll: { paddingHorizontal: 24, marginBottom: 24 },

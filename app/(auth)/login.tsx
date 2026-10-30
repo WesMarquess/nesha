@@ -159,6 +159,7 @@ export default function Login() {
           <TouchableOpacity
             style={styles.forgotRow}
             onPress={() => showComingSoon('A recuperação de senha')}
+            accessibilityRole="button"
           >
             <Text style={styles.link}>Esqueceu a senha?</Text>
           </TouchableOpacity>
@@ -170,6 +171,9 @@ export default function Login() {
             onPress={handleSubmit}
             disabled={submitting}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Entrar como cliente"
+            accessibilityState={{ disabled: submitting, busy: submitting }}
           >
             {submitting ? (
               <ActivityIndicator color={colors.primaryText} />
@@ -182,6 +186,7 @@ export default function Login() {
             style={styles.secondaryButton}
             onPress={() => router.push('/cadastro')}
             activeOpacity={0.85}
+            accessibilityRole="button"
           >
             <Text style={styles.secondaryButtonText}>Criar Conta Grátis</Text>
           </TouchableOpacity>
@@ -190,6 +195,9 @@ export default function Login() {
             <Text style={styles.providerText}>É um profissional parceiro? </Text>
             <TouchableOpacity
               onPress={() => showComingSoon('A Área do Prestador')}
+              accessibilityRole="button"
+              accessibilityLabel="Área do Prestador"
+              hitSlop={{ top: 12, bottom: 12 }}
             >
               <Text style={styles.link}>Área do Prestador →</Text>
             </TouchableOpacity>

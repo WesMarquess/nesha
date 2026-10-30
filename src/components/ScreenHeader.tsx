@@ -19,6 +19,7 @@ export function ScreenHeader({ title, showBack = true }: ScreenHeaderProps) {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityRole="button"
             accessibilityLabel="Voltar"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
@@ -26,7 +27,7 @@ export function ScreenHeader({ title, showBack = true }: ScreenHeaderProps) {
           </TouchableOpacity>
         )}
       </View>
-      <Text style={styles.title} numberOfLines={1}>
+      <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
         {title}
       </Text>
       <View style={styles.side} />

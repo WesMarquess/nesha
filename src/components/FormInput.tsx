@@ -68,6 +68,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
             <TouchableOpacity
               onPress={() => setHidden((prev) => !prev)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
               accessibilityLabel={hidden ? 'Mostrar senha' : 'Ocultar senha'}
             >
               <Ionicons

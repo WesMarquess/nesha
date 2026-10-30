@@ -45,6 +45,7 @@ export default function NovasSolicitacoes() {
           </Text>
           <TouchableOpacity
             onPress={() => router.replace('/prestador/solicitacoes' as Href)}
+            accessibilityRole="button"
           >
             <Text style={styles.reload}>Recarregar</Text>
           </TouchableOpacity>
@@ -79,6 +80,7 @@ export default function NovasSolicitacoes() {
                 compact
                 variant="danger"
                 title="Recusar"
+                accessibilityHint={`Recusa a solicitação de ${item.cliente.nome}`}
                 style={styles.flex}
                 onPress={() => responder(item.id, false)}
               />
@@ -94,6 +96,7 @@ export default function NovasSolicitacoes() {
               <Button
                 compact
                 title="Aceitar"
+                accessibilityHint={`Confirma o agendamento com ${item.cliente.nome}`}
                 style={styles.flex}
                 onPress={() => responder(item.id, true)}
               />

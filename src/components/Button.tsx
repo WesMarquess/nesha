@@ -19,6 +19,7 @@ type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -30,6 +31,7 @@ export function Button({
   loading,
   disabled,
   compact,
+  accessibilityHint,
   style,
 }: ButtonProps) {
   const v = variants[variant];
@@ -39,6 +41,12 @@ export function Button({
       onPress={onPress}
       activeOpacity={0.85}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
+      // O botão compacto tem 38 de altura; o hitSlop leva a área de toque a 48.
+      hitSlop={compact ? { top: 5, bottom: 5 } : undefined}
       style={[
         styles.base,
         compact && styles.compact,

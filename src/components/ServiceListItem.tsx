@@ -32,6 +32,10 @@ export default function ServiceListItem({ service, selected, onToggleSelected }:
           style={styles.infoContainer}
           onPress={() => setIsExpanded(!isExpanded)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`${service.title}, ${service.basePrice}`}
+          accessibilityHint="Mostra ou esconde os detalhes do serviço"
+          accessibilityState={{ expanded: isExpanded }}
         >
           <Text style={styles.title}>{service.title}</Text>
           <Text style={styles.price}>{service.basePrice}</Text>
@@ -85,6 +89,7 @@ export default function ServiceListItem({ service, selected, onToggleSelected }:
           <TouchableOpacity 
             style={styles.button} 
             onPress={() => router.push('/lista-profissionais')}
+            accessibilityRole="button"
           >
             <Text style={styles.buttonText}>Ver profissionais</Text>
           </TouchableOpacity>

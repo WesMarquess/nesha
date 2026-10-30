@@ -28,7 +28,7 @@ export default function ListaProfissionaisScreen() {
           <Text style={styles.profName}>{item.name}</Text>
           <Text style={styles.profRole}>Parceiro desde {item.memberSince}</Text>
           <View style={styles.ratingRow}>
-            <Feather name="star" size={14} color="#F2C94C" style={{ marginRight: 4 }} />
+            <Feather name="star" size={14} color={colors.star} style={{ marginRight: 4 }} />
             <Text style={styles.ratingText}>{item.rating}</Text>
             <Text style={styles.reviewsText}>({item.reviewsCount} avaliações)</Text>
           </View>
@@ -53,6 +53,8 @@ export default function ListaProfissionaisScreen() {
       <TouchableOpacity
         style={styles.actionButton}
         onPress={() => router.push('/profissional')}
+        accessibilityRole="button"
+        accessibilityLabel={`Visualizar perfil e agendar com ${item.name}`}
       >
         <Text style={styles.actionButtonText}>Visualizar Perfil e Agendar</Text>
       </TouchableOpacity>
@@ -63,14 +65,18 @@ export default function ListaProfissionaisScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Cabeçalho */}
-        <TouchableOpacity style={styles.backButtonContainer} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButtonContainer}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+        >
           <Feather name="arrow-left" size={16} color={colors.textMuted} />
           <Text style={styles.backText}>Voltar para catálogo</Text>
         </TouchableOpacity>
         
         <View style={styles.titleRow}>
           <Text style={styles.title}>{selectedServices.length > 0 ? 'Profissionais' : 'Jardineiros'}</Text>
-          <TouchableOpacity style={styles.filterIcon}>
+          <TouchableOpacity style={styles.filterIcon} accessibilityRole="button" accessibilityLabel="Filtros">
              <Feather name="sliders" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
