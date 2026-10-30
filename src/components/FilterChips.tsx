@@ -28,6 +28,10 @@ export function FilterChips<T extends string>({
             key={option.key}
             activeOpacity={0.8}
             onPress={() => onChange(option.key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            // O chip tem 32 de altura; o hitSlop leva a área de toque a 48.
+            hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.chip, selected && styles.chipSelected]}
           >
             <Text style={[styles.text, selected && styles.textSelected]}>

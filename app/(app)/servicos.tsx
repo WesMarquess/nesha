@@ -42,7 +42,12 @@ export default function ServicosScreen() {
       <View style={styles.container}>
         {/* Cabeçalho com botão de voltar */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Feather name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>Todos os Serviços</Text>
@@ -94,6 +99,8 @@ export default function ServicosScreen() {
             style={[styles.continueButton, selectedServices.length === 0 && styles.continueButtonDisabled]}
             onPress={viewProfessionals}
             disabled={selectedServices.length === 0}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: selectedServices.length === 0 }}
           >
             <Text style={styles.continueButtonText}>Ver profissionais</Text>
             <Feather name="arrow-right" size={18} color="#FFF" />

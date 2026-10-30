@@ -96,8 +96,10 @@ export default function AvaliarServico() {
                 <TouchableOpacity
                   key={valor}
                   onPress={() => setNota(valor)}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  accessibilityLabel={`Nota ${valor}`}
+                  hitSlop={{ top: 9, bottom: 9, left: 9, right: 9 }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Nota ${valor} de 5`}
+                  accessibilityState={{ checked: valor === nota }}
                 >
                   <Ionicons
                     name={valor <= nota ? 'star' : 'star-outline'}
@@ -122,6 +124,8 @@ export default function AvaliarServico() {
                     key={destaque}
                     activeOpacity={0.8}
                     onPress={() => alternarDestaque(destaque)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selecionado }}
                     style={[styles.tag, selecionado && styles.tagSelected]}
                   >
                     <Text

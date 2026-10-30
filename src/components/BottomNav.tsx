@@ -28,7 +28,10 @@ export function BottomNav({ active, agendaHref = '/agenda' }: BottomNavProps) {
   ];
 
   return (
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}
+      accessibilityRole="tablist"
+    >
       {items.map((item) => {
         const selected = item.key === active;
         const color = selected ? colors.primary : colors.textMuted;
@@ -38,6 +41,8 @@ export function BottomNav({ active, agendaHref = '/agenda' }: BottomNavProps) {
             key={item.key}
             style={styles.item}
             activeOpacity={0.7}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
             onPress={() => {
               if (!selected) {
                 router.replace(item.href as Href);

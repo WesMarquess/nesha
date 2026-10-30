@@ -83,6 +83,9 @@ export default function CancelarServico() {
             style={styles.select}
             activeOpacity={0.8}
             onPress={() => setAberto((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel={`Motivo do cancelamento: ${motivo ?? 'nenhum selecionado'}`}
+            accessibilityState={{ expanded: aberto }}
           >
             <Text style={[styles.selectText, !motivo && styles.selectPlaceholder]}>
               {motivo ?? 'Selecione o motivo do cancelamento...'}
@@ -100,6 +103,8 @@ export default function CancelarServico() {
                 <TouchableOpacity
                   key={opcao}
                   style={styles.option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: opcao === motivo }}
                   onPress={() => {
                     setMotivo(opcao);
                     setAberto(false);

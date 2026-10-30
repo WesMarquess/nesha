@@ -19,7 +19,12 @@ export default function Home() {
             <Text style={styles.greeting}>Olá, {usuario?.nome || 'Usuário'} 👋</Text>
             <Text style={styles.title}>Do que sua casa precisa?</Text>
           </View>
-          <TouchableOpacity style={styles.bellButton} onPress={signOut}>
+          <TouchableOpacity
+            style={styles.bellButton}
+            onPress={signOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sair da conta"
+          >
             <Feather name="log-out" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -47,7 +52,7 @@ export default function Home() {
         <Text style={styles.sectionTitle}>Serviços recomendados</Text>
         
         {/* Card 1 */}
-        <TouchableOpacity style={styles.serviceCard} onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '2' } })}>
+        <TouchableOpacity style={styles.serviceCard} accessibilityRole="button" onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '2' } })}>
           <View style={styles.serviceIconContainer}>
              <Feather name="home" size={24} color={colors.primary} />
           </View>
@@ -60,7 +65,7 @@ export default function Home() {
         </TouchableOpacity>
 
         {/* Card 2 */}
-        <TouchableOpacity style={styles.serviceCard} onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '5' } })}>
+        <TouchableOpacity style={styles.serviceCard} accessibilityRole="button" onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '5' } })}>
           <View style={styles.serviceIconContainer}>
              <Feather name="activity" size={24} color={colors.primary} />
           </View>
@@ -76,6 +81,7 @@ export default function Home() {
         <TouchableOpacity 
           style={styles.seeAllButton} 
           onPress={() => router.push('/servicos')}
+          accessibilityRole="button"
         >
           <Text style={styles.seeAllText}>Ver todos</Text>
         </TouchableOpacity>

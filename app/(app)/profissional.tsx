@@ -15,7 +15,12 @@ export default function ProfissionalScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Feather name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Perfil do Profissional</Text>
@@ -82,6 +87,7 @@ export default function ProfissionalScreen() {
           <TouchableOpacity 
             style={styles.outlineButton} 
             onPress={() => router.push('/avaliacoes')}
+            accessibilityRole="button"
           >
             <Text style={styles.outlineButtonText}>Ver todas as avaliações</Text>
           </TouchableOpacity>
@@ -97,7 +103,7 @@ export default function ProfissionalScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.primaryButton}>
+        <TouchableOpacity style={styles.primaryButton} accessibilityRole="button">
           <Text style={styles.primaryButtonText}>Agendar com {prof.name.split(' ')[0]}</Text>
         </TouchableOpacity>
 
@@ -135,7 +141,7 @@ const styles = StyleSheet.create({
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   barLabel: { fontSize: 10, color: colors.textMuted, width: 50 },
   barTrack: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginHorizontal: 8 },
-  barFill: { height: 6, backgroundColor: '#F2C94C', borderRadius: 3 },
+  barFill: { height: 6, backgroundColor: colors.star, borderRadius: 3 },
   barNumber: { fontSize: 10, color: colors.text, width: 16, textAlign: 'right' },
   outlineButton: { borderWidth: 1, borderColor: colors.primary, borderRadius: 12, height: 48, justifyContent: 'center', alignItems: 'center' },
   outlineButtonText: { color: colors.primary, fontSize: 14, fontWeight: 'bold' },
