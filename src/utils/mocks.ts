@@ -18,7 +18,9 @@ export interface Professional {
   reviewsCount: number;
   location: string;
   pricePerDay: string;
+  price: number; // valor numérico de pricePerDay, usado na ordenação
   availability: string;
+  workDays: number[]; // dias de availability (0 = domingo ... 6 = sábado)
   responseTime: string;
   aboutMe: string;
   specialties: string[];
@@ -83,7 +85,9 @@ export const mockProfessionals: Professional[] = [
     reviewsCount: 82,
     location: 'São Paulo - Zona Sul e Oeste',
     pricePerDay: 'R$ 130 / dia',
+    price: 130,
     availability: 'Seg a Sáb',
+    workDays: [1, 2, 3, 4, 5, 6],
     responseTime: 'Menos de 1 hora',
     aboutMe: 'Olá! Sou o Francisco, jardineiro com experiência em manutenção de quintais, poda, replantio e organização de espaços externos. Trabalho com cuidado, pontualidade e foco em deixar cada jardim bem cuidado e pronto para uso.',
     specialties: [
@@ -104,7 +108,9 @@ export const mockProfessionals: Professional[] = [
     reviewsCount: 45,
     location: 'São Paulo - Centro e Zona Norte',
     pricePerDay: 'R$ 120 / dia',
+    price: 120,
     availability: 'Seg, Qua e Sex',
+    workDays: [1, 3, 5],
     responseTime: 'Cerca de 2 horas',
     aboutMe: 'Trabalho focado em hortas e pequenos jardins residenciais.',
     specialties: ['Manutenção de jardim', 'Poda leve'],

@@ -1,35 +1,17 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useSyncExternalStore } from 'react';
 import {
   Agendamento,
+  assinarAgendamentos,
   buscarAgendamento,
   listarAgendamentos,
 } from './agendamentos';
 
-// Recarrega os dados toda vez que a tela volta ao foco
-// (ex.: depois de cancelar ou avaliar em outra tela).
+// Assina a lista de agendamentos (padrão Observer): a tela é redesenhada
+// sempre que um agendamento muda, inclusive quando a mudança vem de outra tela.
 export function useAgendamentos(): Agendamento[] {
-  const [lista, setLista] = useState<Agendamento[]>(listarAgendamentos);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLista(listarAgendamentos());
-    }, [])
-  );
-
-  return lista;
+  return useSyncExternalStore(assinarAgendamentos, listarAgendamentos);
 }
 
 export function useAgendamento(id?: string): Agendamento | undefined {
-  const [item, setItem] = useState<Agendamento | undefined>(() =>
-    buscarAgendamento(id)
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      setItem(buscarAgendamento(id));
-    }, [id])
-  );
-
-  return item;
+  return useSyncExternalStore(assinarAgendamentos, () => buscarAgendamento(id));
 }

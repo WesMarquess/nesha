@@ -1,5 +1,6 @@
 // Dados mockados das telas de agenda. Quando o backend estiver pronto,
 // troque as funções abaixo por chamadas em src/services (o restante das telas não muda).
+import { EstadoAgendamento, estadoDe } from './estadosAgendamento';
 
 export type StatusAgendamento =
   | 'PENDENTE'
@@ -142,30 +143,61 @@ export const DESTAQUES_AVALIACAO = [
   'Organização',
 ];
 
+// Padrão Observer (GoF): as telas assinam a lista e são avisadas a cada mudança
+// (ex.: o prestador aceita uma solicitação e a agenda do cliente se atualiza).
+// Ver docs/DESIGN_PATTERNS.md.
+type Observador = () => void;
+const observadores = new Set<Observador>();
+
+export function assinarAgendamentos(observador: Observador): () => void {
+  observadores.add(observador);
+  return () => {
+    observadores.delete(observador);
+  };
+}
+
+function notificar() {
+  observadores.forEach((observador) => observador());
+}
+
+// Retorna sempre a mesma referência até a próxima mudança (exigido pelo
+// useSyncExternalStore em useAgendamentos.ts).
 export function listarAgendamentos(): Agendamento[] {
-  return [...agendamentos];
+  return agendamentos;
 }
 
 export function buscarAgendamento(id?: string): Agendamento | undefined {
   return agendamentos.find((a) => a.id === id);
 }
 
-function atualizar(id: string, mudancas: Partial<Agendamento>) {
-  agendamentos = agendamentos.map((a) =>
-    a.id === id ? { ...a, ...mudancas } : a
-  );
+// Toda mudança de status passa pelo estado atual (padrão State), que lança
+// TransicaoInvalidaError se a ação não for permitida.
+function transicionar(
+  id: string,
+  acao: (estado: EstadoAgendamento, ag: Agendamento) => Agendamento
+) {
+  agendamentos = agendamentos.map((a) => (a.id === id ? acao(estadoDe(a), a) : a));
+  notificar();
 }
 
-export function atualizarStatus(id: string, status: StatusAgendamento) {
-  atualizar(id, { status });
+export function aceitarSolicitacao(id: string) {
+  transicionar(id, (estado, ag) => estado.aceitar(ag));
+}
+
+export function recusarSolicitacao(id: string) {
+  transicionar(id, (estado, ag) => estado.recusar(ag));
 }
 
 export function cancelarAgendamento(id: string, motivo: string) {
-  atualizar(id, { status: 'CANCELADO', motivoCancelamento: motivo });
+  transicionar(id, (estado, ag) => estado.cancelar(ag, motivo));
+}
+
+export function concluirAgendamento(id: string) {
+  transicionar(id, (estado, ag) => estado.concluir(ag));
 }
 
 export function avaliarAgendamento(id: string, avaliacao: Avaliacao) {
-  atualizar(id, { avaliacao });
+  transicionar(id, (estado, ag) => estado.avaliar(ag, avaliacao));
 }
 
 export function formatarValor(valor: number): string {

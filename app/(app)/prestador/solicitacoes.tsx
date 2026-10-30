@@ -8,22 +8,26 @@ import { Card } from '../../../src/components/Card';
 import { IconLine } from '../../../src/components/InfoRow';
 import { StatusBadge } from '../../../src/components/StatusBadge';
 import {
-  atualizarStatus,
+  aceitarSolicitacao,
   formatarValor,
+  recusarSolicitacao,
 } from '../../../src/data/agendamentos';
+import { estadoDe } from '../../../src/data/estadosAgendamento';
 import { useAgendamentos } from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
 
 export default function NovasSolicitacoes() {
   const router = useRouter();
   const agendamentos = useAgendamentos();
-  const pendentes = agendamentos.filter((a) => a.status === 'PENDENTE');
+  const pendentes = agendamentos.filter((a) => estadoDe(a).podeResponder);
 
-  // Os dados vêm do hook ao ganhar foco; após aceitar/recusar, volta para a agenda
-  // (que recarrega) ou, se ainda houver pendentes, atualiza a lista local.
-  function responder(id: string, status: 'CONFIRMADO' | 'CANCELADO') {
-    atualizarStatus(id, status);
-    router.replace('/prestador/solicitacoes' as Href);
+  // A lista se atualiza sozinha (useAgendamentos assina as mudanças).
+  function responder(id: string, aceitar: boolean) {
+    if (aceitar) {
+      aceitarSolicitacao(id);
+    } else {
+      recusarSolicitacao(id);
+    }
   }
 
   return (
@@ -76,7 +80,7 @@ export default function NovasSolicitacoes() {
                 variant="danger"
                 title="Recusar"
                 style={styles.flex}
-                onPress={() => responder(item.id, 'CANCELADO')}
+                onPress={() => responder(item.id, false)}
               />
               <Button
                 compact
@@ -91,7 +95,7 @@ export default function NovasSolicitacoes() {
                 compact
                 title="Aceitar"
                 style={styles.flex}
-                onPress={() => responder(item.id, 'CONFIRMADO')}
+                onPress={() => responder(item.id, true)}
               />
             </View>
           </Card>
