@@ -35,6 +35,7 @@ yarn-error.*
 
 # notas locais de apoio (não fazem parte do projeto)
 *.local.md
+docs/PR_TEMPLATE.md
 
 # typescript
 *.tsbuildinfo
