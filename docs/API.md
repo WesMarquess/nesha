@@ -22,8 +22,10 @@
 | Método | Rota | Acesso | Uso no app |
 |---|---|---|---|
 | POST | `/auth/login` | Público | Tela de login |
-| POST | `/clientes` | Público | Tela de cadastro |
-| GET | `/usuarios/me` | Bearer | Restaurar sessão ao abrir o app |
+| POST | `/clientes` | Público | Tela de cadastro (Área do Cliente) |
+| POST | `/prestadores` | Público | Tela de cadastro (Área do Prestador) |
+| GET | `/usuarios/me` | Bearer | Restaurar sessão ao abrir o app (os dois perfis) |
+| GET | `/prestadores/me` | Bearer | Perfil completo do prestador logado (`meu-perfil-prestador`) |
 | POST | `/auth/forgot-password` | Público | Previsto (tela ainda não existe) |
 | POST | `/auth/refresh` | Público | Previsto, opcional |
 
@@ -82,7 +84,7 @@ Cadastra um novo cliente. O app **não** faz login automático depois: leva a pe
 ```json
 {
   "nome": "Maria Silva",
-  "cpf": "52998224725",
+  "cpf": "00000000000",
   "telefone": "11987654321",
   "email": "maria@email.com",
   "senha": "Senha@123",
@@ -127,7 +129,127 @@ Nos erros 409, envie também `campos` (ex.: `{ "email": "Este e-mail já está c
 
 ---
 
-### 3.3 `GET /usuarios/me`
+### 3.3 `POST /prestadores`
+
+Cadastra um novo prestador. Mesmo padrão de `POST /clientes`: nome, cpf, telefone, email, senha e
+endereço são idênticos (mesmas regras da seção 5), mais os campos específicos do prestador. O app
+**não** faz login automático depois: leva a pessoa para a tela de login (login é o mesmo endpoint
+`POST /auth/login`, único para os dois perfis — ver seção 8, item 2, já resolvido).
+
+**Requisição**
+
+```json
+{
+  "nome": "Francisco Oliveira",
+  "cpf": "00000000000",
+  "telefone": "11987654321",
+  "email": "francisco@email.com",
+  "senha": "Senha@123",
+  "endereco": {
+    "cep": "01310100",
+    "logradouro": "Avenida Paulista",
+    "numero": "1000",
+    "complemento": "Apto 12",
+    "bairro": "Bela Vista",
+    "cidade": "São Paulo",
+    "uf": "SP"
+  },
+  "servicoPrincipal": "Jardinagem",
+  "areaAtendimento": "São Paulo - Zona Sul e Oeste",
+  "sobreMim": "Jardineiro com experiência em manutenção de quintais, poda e replantio.",
+  "preco": 130.00,
+  "unidadePreco": "DIA",
+  "tempoResposta": "Menos de 1 hora",
+  "especialidades": ["Poda de árvores e arbustos", "Roçagem e limpeza de terreno"],
+  "diasAtendimento": [1, 2, 3, 4, 5, 6]
+}
+```
+
+| Campo | Regra |
+|---|---|
+| `servicoPrincipal` | Obrigatório, até 255 caracteres (ex.: "Jardinagem") |
+| `areaAtendimento` | Obrigatório, até 255 caracteres — texto livre de cidade/região (ex.: "São Paulo - Zona Sul e Oeste"). **Não substitui** `endereco`, que continua sendo o endereço formal do usuário |
+| `sobreMim` | Opcional, até 2000 caracteres |
+| `preco` | Obrigatório, numérico, maior que zero |
+| `unidadePreco` | Opcional: `DIA`, `HORA` ou `SERVICO`. Default `DIA` quando omitido |
+| `tempoResposta` | Opcional, texto livre, até 100 caracteres (ex.: "Menos de 1 hora") |
+| `especialidades` | Obrigatório, lista com ao menos 1 item |
+| `diasAtendimento` | Obrigatório, lista com ao menos 1 dia (`0` = domingo … `6` = sábado) |
+
+**Resposta `201 Created`**
+
+```json
+{
+  "usuario": {
+    "id": "b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f2222",
+    "nome": "Francisco Oliveira",
+    "email": "francisco@email.com",
+    "perfil": "PRESTADOR"
+  }
+}
+```
+
+Mesmo formato de `CadastroClienteResponse`, só com `UsuarioResponse` (sem os campos específicos de
+prestador). Para a tela de perfil completo do próprio prestador, use `GET /prestadores/me` (seção
+3.4) — essa separação evita que `UsuarioResponse` (usado também pelo cliente) cresça com campos que
+não fazem sentido para quem é cliente.
+
+**Erros**
+
+| HTTP | `codigo` | Quando |
+|---|---|---|
+| 400 | `VALIDACAO` | Algum campo inválido (detalhado em `campos`) |
+| 409 | `EMAIL_JA_CADASTRADO` | E-mail já em uso |
+| 409 | `CPF_JA_CADASTRADO` | CPF já em uso |
+
+---
+
+### 3.4 `GET /prestadores/me`
+
+Devolve o usuário dono do token **mais** os campos específicos de prestador. Para telas que só
+precisam dos dados básicos (`id`, `nome`, `email`, `perfil`), use `GET /usuarios/me`.
+
+**Header:** `Authorization: Bearer <accessToken>`
+
+**Resposta `200 OK`**
+
+```json
+{
+  "usuario": {
+    "id": "b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f2222",
+    "nome": "Francisco Oliveira",
+    "email": "francisco@email.com",
+    "perfil": "PRESTADOR"
+  },
+  "servicoPrincipal": "Jardinagem",
+  "areaAtendimento": "São Paulo - Zona Sul e Oeste",
+  "sobreMim": "Jardineiro com experiência em manutenção de quintais, poda e replantio.",
+  "preco": 130.00,
+  "unidadePreco": "DIA",
+  "tempoResposta": "Menos de 1 hora",
+  "fotoUrl": null,
+  "especialidades": ["Poda de árvores e arbustos", "Roçagem e limpeza de terreno"],
+  "diasAtendimento": [1, 2, 3, 4, 5, 6],
+  "disponibilidade": "Seg a Sáb"
+}
+```
+
+- `disponibilidade`: texto legível (ex.: "Seg a Sáb") **derivado** de `diasAtendimento` pela API, não
+  persistido — assim os dois nunca ficam desalinhados.
+- `fotoUrl`: ainda sem endpoint de upload nesta tarefa; fica `null` até existir uma forma de setá-la.
+- `rating`/`reviewsCount` do mock do app **não** aparecem aqui — dependem da entidade de avaliação
+  (fora do escopo desta tarefa, ver `docs/BACKEND_GAPS.md` seção 2.3).
+
+**Erros**
+
+| HTTP | `codigo` | Quando |
+|---|---|---|
+| 401 | `TOKEN_INVALIDO` / `TOKEN_EXPIRADO` | Mesmo comportamento de `GET /usuarios/me` |
+| 404 | `PRESTADOR_NAO_ENCONTRADO` | Token válido, mas de um usuário `CLIENTE` (sem `prestador_perfil`) |
+
+---
+
+### 3.5 `GET /usuarios/me`
 
 Devolve o usuário dono do token. O app chama ao abrir, para validar o token salvo no aparelho.
 
@@ -155,7 +277,7 @@ O app encerra a sessão local ao receber qualquer `401` em rota protegida.
 
 ---
 
-### 3.4 `POST /auth/forgot-password` (previsto)
+### 3.6 `POST /auth/forgot-password` (previsto)
 
 Dispara o e-mail de recuperação de senha. A tela ainda não existe no app.
 
@@ -165,7 +287,7 @@ Dispara o e-mail de recuperação de senha. A tela ainda não existe no app.
 
 **Resposta `204 No Content`** — sempre, exista o e-mail ou não, para não revelar quais e-mails estão cadastrados.
 
-### 3.5 `POST /auth/refresh` (previsto, opcional)
+### 3.7 `POST /auth/refresh` (previsto, opcional)
 
 Renovação do token sem novo login. O app ainda **não** usa. Se o backend adotar, o login passa a devolver também `refreshToken`, e este endpoint recebe `{ "refreshToken": "..." }` e devolve um novo `accessToken`.
 
@@ -199,6 +321,7 @@ Toda resposta de erro (4xx/5xx) deve seguir este corpo:
 | 400 | `VALIDACAO` |
 | 401 | `CREDENCIAIS_INVALIDAS`, `TOKEN_INVALIDO`, `TOKEN_EXPIRADO` |
 | 403 | `PERFIL_INVALIDO` |
+| 404 | `PRESTADOR_NAO_ENCONTRADO` |
 | 409 | `EMAIL_JA_CADASTRADO`, `CPF_JA_CADASTRADO` |
 | 500 | `ERRO_INTERNO` |
 
@@ -233,7 +356,7 @@ No login, o app só exige e-mail válido e senha preenchida. Não aplica as regr
 # Cadastro
 curl -i -X POST http://localhost:8080/api/v1/clientes \
   -H "Content-Type: application/json" \
-  -d '{"nome":"Maria Silva","cpf":"52998224725","telefone":"11987654321","email":"maria@email.com","senha":"Senha@123","endereco":{"cep":"01310100","logradouro":"Avenida Paulista","numero":"1000","bairro":"Bela Vista","cidade":"São Paulo","uf":"SP"}}'
+  -d '{"nome":"Maria Silva","cpf":"00000000000","telefone":"11987654321","email":"maria@email.com","senha":"Senha@123","endereco":{"cep":"01310100","logradouro":"Avenida Paulista","numero":"1000","bairro":"Bela Vista","cidade":"São Paulo","uf":"SP"}}'
 
 # Login
 curl -i -X POST http://localhost:8080/api/v1/auth/login \
@@ -242,6 +365,15 @@ curl -i -X POST http://localhost:8080/api/v1/auth/login \
 
 # Usuário logado (troque TOKEN pelo accessToken do login)
 curl -i http://localhost:8080/api/v1/usuarios/me \
+  -H "Authorization: Bearer TOKEN"
+
+# Cadastro de prestador
+curl -i -X POST http://localhost:8080/api/v1/prestadores \
+  -H "Content-Type: application/json" \
+  -d '{"nome":"Francisco Oliveira","cpf":"00000000001","telefone":"11987654321","email":"francisco@email.com","senha":"Senha@123","endereco":{"cep":"01310100","logradouro":"Avenida Paulista","numero":"1000","bairro":"Bela Vista","cidade":"São Paulo","uf":"SP"},"servicoPrincipal":"Jardinagem","areaAtendimento":"São Paulo - Zona Sul e Oeste","preco":130.00,"especialidades":["Poda de árvores"],"diasAtendimento":[1,2,3,4,5,6]}'
+
+# Perfil completo do prestador logado (troque TOKEN pelo accessToken do login)
+curl -i http://localhost:8080/api/v1/prestadores/me \
   -H "Authorization: Bearer TOKEN"
 ```
 
@@ -275,7 +407,23 @@ EXPO_PUBLIC_USE_MOCK=false
 ## 8. Pontos para alinhar com o backend
 
 1. **Rotas e nomes de campos** acima estão ok, ou o backend prefere outros?
-2. **Login compartilhado** entre Cliente e Prestador (diferenciado por `perfil`) ou rotas separadas?
+2. ~~**Login compartilhado** entre Cliente e Prestador (diferenciado por `perfil`) ou rotas separadas?~~
+   **Resolvido:** login compartilhado, único `POST /auth/login` para os dois perfis — ver seção 3.1
+   e `docs/TASK_PRESTADOR_BACKEND.md`.
 3. **Refresh token:** será usado? Qual a validade do `accessToken`?
 4. **Confirmação de e-mail** no cadastro: vai existir? Se sim, o fluxo muda (cadastro não libera login até confirmar).
 5. **Formato de erro** da seção 4 está ok para o backend padronizar?
+6. **CPF vs. CNPJ no cadastro de prestador:** a tela `cadastro-prestador` no Figma pede "CPF ou
+   CNPJ", mas o backend aceita hoje **somente CPF** (mesma validação `@CpfValido` do cliente, 11
+   dígitos). Suportar CNPJ exigiria um validador novo e, possivelmente, campos adicionais de pessoa
+   jurídica — ficou de fora desta tarefa. Fluxo e UI não devem oferecer CNPJ até isso ser decidido.
+7. **Campos de perfil do prestador por categoria:** as telas `configuracoes-servico-prestador` no
+   Figma modelam preço e disponibilidade **por categoria de serviço** (um prestador pode ter preço e
+   agenda diferentes para "Jardinagem" e "Manutenção de Piscina", por exemplo). O backend desta tarefa
+   modela isso de forma mais simples — um preço, uma lista de dias e uma lista de especialidades por
+   prestador (ver `prestador_perfil` em `docs/BACKEND_GAPS.md`) — suficiente para `cadastro-prestador`,
+   `perfil-prestador` e `meu-perfil-prestador`. Configuração por categoria fica para uma tarefa futura,
+   quando o grupo decidir o modelo (provavelmente uma tabela `prestador_categoria` com preço e agenda
+   próprios).
+8. **Foto de perfil do prestador:** ainda sem endpoint de upload; `GET /prestadores/me` devolve
+   `fotoUrl: null` até essa decisão ser tomada (upload próprio vs. só URL).

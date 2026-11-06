@@ -36,6 +36,8 @@ yarn-error.*
 # notas locais de apoio (não fazem parte do projeto)
 *.local.md
 docs/PR_TEMPLATE.md
+docs/BACKEND_GAPS.md
+docs/TASK_PRESTADOR_BACKEND.md
 
 # typescript
 *.tsbuildinfo
