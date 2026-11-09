@@ -143,3 +143,4 @@ npx tsc --noEmit      # typecheck
 - [`docs/API.md`](docs/API.md) — contrato de API entre app e backend
 - [`docs/DESIGN_PATTERNS.md`](docs/DESIGN_PATTERNS.md) — padrões de projeto fundamentais (State, Strategy, Observer, Adapter) e quando aplicá-los
 - [`backend/README.md`](backend/README.md) — detalhes do backend (variáveis de ambiente, estrutura, endpoints)
+- [Figma — Nesha](https://www.figma.com/design/LOh4F7vDHiN97yI0x8nwRE/Nesha) — protótipo de todas as telas do app (fonte de referência visual para implementação e para dados de telas ainda não construídas)
