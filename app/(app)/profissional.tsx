@@ -1,112 +1,140 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../src/theme/colors';
-import { mockProfessionals } from '../../src/utils/mocks';
+import { Avatar } from '../../src/components/Avatar';
+import { ResumoAvaliacoes } from '../../src/components/ResumoAvaliacoes';
+import { precoDoPrestador, usePrestador } from '../../src/data/usePrestador';
+import { urlFoto } from '../../src/services/auth';
 
 export default function ProfissionalScreen() {
   const router = useRouter();
-  const prof = mockProfessionals[0];
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { prestador: prof, erro } = usePrestador(id);
+
+  const cabecalho = (
+    <View style={styles.header}>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.iconButton}
+        accessibilityRole="button"
+        accessibilityLabel="Voltar"
+      >
+        <Feather name="arrow-left" size={24} color={colors.text} />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>Perfil do Profissional</Text>
+      <View style={styles.iconButton} />
+    </View>
+  );
+
+  if (!prof) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.scrollContent}>
+          {cabecalho}
+          {erro ? (
+            <Text style={styles.aboutText}>{erro}</Text>
+          ) : (
+            <ActivityIndicator color={colors.primary} accessibilityLabel="Carregando profissional" />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const especialidades = prof.especialidades.length > 0 ? prof.especialidades : [prof.servicoPrincipal];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <Feather name="arrow-left" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Perfil do Profissional</Text>
-          <View style={styles.iconButton} />
-        </View>
+        {cabecalho}
 
         <View style={styles.profileCard}>
-          <View style={styles.avatarPlaceholder}>
-             <Feather name="user" size={40} color={colors.primary} />
-             <View style={styles.verifiedBadge}>
-               <Feather name="check" size={12} color="#FFF" />
-             </View>
+          <View style={styles.avatar}>
+            <Avatar nome={prof.nome} size={80} uri={urlFoto(prof.fotoUrl)} />
           </View>
-          <Text style={styles.profName}>{prof.name}</Text>
+          <Text style={styles.profName}>{prof.nome}</Text>
           <Text style={styles.profRole}>
-            {prof.role} desde {prof.memberSince} • {prof.reviewsCount} serviços realizados
+            {prof.servicoPrincipal} desde {prof.desde} • {prof.servicosRealizados}{' '}
+            {prof.servicosRealizados === 1 ? 'serviço realizado' : 'serviços realizados'}
           </Text>
           <View style={styles.ratingRow}>
-            <Feather name="star" size={16} color="#F2C94C" style={{ marginRight: 4 }} />
-            <Text style={styles.ratingText}>{prof.rating}</Text>
-            <Text style={styles.reviewsText}>({prof.reviewsCount})</Text>
+            <Feather name="star" size={16} color={colors.star} style={{ marginRight: 4 }} />
+            {prof.nota == null ? (
+              <Text style={styles.reviewsText}>Novo profissional</Text>
+            ) : (
+              <>
+                <Text style={styles.ratingText}>{prof.nota.toFixed(1).replace('.', ',')}</Text>
+                <Text style={styles.reviewsText}>({prof.avaliacoes})</Text>
+              </>
+            )}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sobre mim</Text>
-          <Text style={styles.aboutText}>{prof.aboutMe}</Text>
+          <Text style={styles.aboutText}>
+            {prof.sobreMim || 'Este profissional ainda não escreveu uma apresentação.'}
+          </Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Resumo para contratação</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Disponibilidade</Text>
-            <Text style={styles.summaryValue}>{prof.availability}</Text>
+            <Text style={styles.summaryLabel}>Valor médio</Text>
+            <Text style={styles.summaryValue}>{precoDoPrestador(prof)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tempo médio de resposta</Text>
-            <Text style={styles.summaryValue}>{prof.responseTime}</Text>
+            <Text style={styles.summaryLabel}>Disponibilidade</Text>
+            <Text style={styles.summaryValue}>{prof.disponibilidade || 'Todos os dias'}</Text>
           </View>
+          {!!prof.tempoResposta && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Tempo médio de resposta</Text>
+              <Text style={styles.summaryValue}>{prof.tempoResposta}</Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Atendimento</Text>
-            <Text style={styles.summaryValue}>{prof.location}</Text>
+            <Text style={styles.summaryValue}>{prof.areaAtendimento}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Avaliações</Text>
           <View style={styles.reviewsSummaryCard}>
-            <View style={styles.ratingBigContainer}>
-              <Text style={styles.ratingBig}>{prof.rating}</Text>
-              <View style={styles.starsRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Feather key={star} name="star" size={14} color="#F2C94C" />
-                ))}
-              </View>
-              <Text style={styles.reviewsCountText}>{prof.reviewsCount} avaliações</Text>
-            </View>
-            <View style={styles.barsContainer}>
-              <View style={styles.barRow}><Text style={styles.barLabel}>5 estrelas</Text><View style={styles.barTrack}><View style={[styles.barFill, { width: '85%' }]} /></View><Text style={styles.barNumber}>42</Text></View>
-              <View style={styles.barRow}><Text style={styles.barLabel}>4 estrelas</Text><View style={styles.barTrack}><View style={[styles.barFill, { width: '15%' }]} /></View><Text style={styles.barNumber}>6</Text></View>
-              <View style={styles.barRow}><Text style={styles.barLabel}>3 estrelas</Text><View style={styles.barTrack}><View style={[styles.barFill, { width: '0%' }]} /></View><Text style={styles.barNumber}>0</Text></View>
-            </View>
+            <ResumoAvaliacoes nota={prof.nota} avaliacoes={prof.avaliacoes} porNota={prof.avaliacoesPorNota} />
           </View>
-          <TouchableOpacity 
-            style={styles.outlineButton} 
-            onPress={() => router.push('/avaliacoes')}
-            accessibilityRole="button"
-          >
-            <Text style={styles.outlineButtonText}>Ver todas as avaliações</Text>
-          </TouchableOpacity>
+          {prof.avaliacoes > 0 && (
+            <TouchableOpacity
+              style={styles.outlineButton}
+              onPress={() => router.push({ pathname: '/avaliacoes', params: { id: prof.id } })}
+              accessibilityRole="button"
+            >
+              <Text style={styles.outlineButtonText}>Ver todas as avaliações</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Serviços e especialidades</Text>
-          {prof.specialties.map((item, index) => (
-            <View key={index} style={styles.bulletRow}>
+          {especialidades.map((item) => (
+            <View key={item} style={styles.bulletRow}>
               <View style={styles.bullet} />
               <Text style={styles.bulletText}>{item}</Text>
             </View>
           ))}
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} accessibilityRole="button">
-          <Text style={styles.primaryButtonText}>Agendar com {prof.name.split(' ')[0]}</Text>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.push(`/agendar/${prof.id}` as Href)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryButtonText}>Agendar com {prof.nome.split(' ')[0]}</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -119,8 +147,7 @@ const styles = StyleSheet.create({
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   profileCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border || '#EAEAEA', marginBottom: 24 },
-  avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary + '20', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  verifiedBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: colors.primary, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.surface },
+  avatar: { marginBottom: 16 },
   profName: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
   profRole: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginBottom: 12 },
   ratingRow: { flexDirection: 'row', alignItems: 'center' },
@@ -133,16 +160,6 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: colors.textMuted, flex: 1 },
   summaryValue: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1, textAlign: 'right' },
   reviewsSummaryCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  ratingBigContainer: { alignItems: 'center', marginRight: 16 },
-  ratingBig: { fontSize: 40, fontWeight: 'bold', color: colors.text },
-  starsRow: { flexDirection: 'row', marginVertical: 4 },
-  reviewsCountText: { fontSize: 12, color: colors.textMuted },
-  barsContainer: { flex: 1 },
-  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  barLabel: { fontSize: 10, color: colors.textMuted, width: 50 },
-  barTrack: { flex: 1, height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginHorizontal: 8 },
-  barFill: { height: 6, backgroundColor: colors.star, borderRadius: 3 },
-  barNumber: { fontSize: 10, color: colors.text, width: 16, textAlign: 'right' },
   outlineButton: { borderWidth: 1, borderColor: colors.primary, borderRadius: 12, height: 48, justifyContent: 'center', alignItems: 'center' },
   outlineButtonText: { color: colors.primary, fontSize: 14, fontWeight: 'bold' },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },

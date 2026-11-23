@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,12 +7,22 @@ import { Avatar } from '../../../../src/components/Avatar';
 import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
 import { SummaryRow } from '../../../../src/components/InfoRow';
+import { Notice } from '../../../../src/components/Notice';
 import { ScreenHeader } from '../../../../src/components/ScreenHeader';
 import {
+  aceitarSolicitacao,
+  concluirAgendamento,
   formatarValor,
+  mensagemDeErro,
+  recusarSolicitacao,
   StatusAgendamento,
 } from '../../../../src/data/agendamentos';
-import { useAgendamento } from '../../../../src/data/useAgendamentos';
+import { estadoDe } from '../../../../src/data/estadosAgendamento';
+import {
+  useAgendamento,
+  useRecarregarAoFocar,
+  useSituacaoAgendamentos,
+} from '../../../../src/data/useAgendamentos';
 import { colors } from '../../../../src/theme/colors';
 
 const STATUS_TEXTO: Record<StatusAgendamento, [string, string]> = {
@@ -20,10 +30,7 @@ const STATUS_TEXTO: Record<StatusAgendamento, [string, string]> = {
     'Agendamento Confirmado',
     'Serviço confirmado para atendimento no endereço do cliente.',
   ],
-  PENDENTE: [
-    'Solicitação pendente',
-    'Aceite ou recuse a solicitação na tela de novas solicitações.',
-  ],
+  PENDENTE: ['Solicitação pendente', 'Aceite ou recuse a solicitação do cliente.'],
   CONCLUIDO: ['Serviço Concluído', 'Este atendimento já foi realizado.'],
   CANCELADO: ['Agendamento Cancelado', 'Este atendimento foi cancelado.'],
 };
@@ -38,18 +45,41 @@ const DOT: Record<StatusAgendamento, string> = {
 export default function DetalhesAgendamentoPrestador() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const item = useAgendamento(id);
+  const { carregado } = useSituacaoAgendamentos();
+  useRecarregarAoFocar();
   const [copiado, setCopiado] = useState(false);
+  const [enviando, setEnviando] = useState<'aceitar' | 'recusar' | 'concluir' | null>(null);
+  const [erro, setErro] = useState('');
 
   if (!item) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <ScreenHeader title="Detalhes do Agendamento" />
-        <Text style={styles.empty}>Agendamento não encontrado.</Text>
+        {carregado ? (
+          <Text style={styles.empty}>Agendamento não encontrado.</Text>
+        ) : (
+          <ActivityIndicator style={styles.loading} color={colors.primary} />
+        )}
       </SafeAreaView>
     );
   }
 
-  const [titulo, subtitulo] = STATUS_TEXTO[item.status];
+  const [titulo, padrao] = STATUS_TEXTO[item.status];
+  const subtitulo = item.status === 'CANCELADO' && item.motivoCancelamento ? item.motivoCancelamento : padrao;
+  const estado = estadoDe(item);
+
+  async function executar(acao: 'aceitar' | 'recusar' | 'concluir') {
+    setEnviando(acao);
+    setErro('');
+    try {
+      const funcoes = { aceitar: aceitarSolicitacao, recusar: recusarSolicitacao, concluir: concluirAgendamento };
+      await funcoes[acao](item!.id);
+    } catch (error) {
+      setErro(mensagemDeErro(error));
+    } finally {
+      setEnviando(null);
+    }
+  }
 
   async function copiarTelefone() {
     await Clipboard.setStringAsync(item!.cliente.telefone);
@@ -71,7 +101,7 @@ export default function DetalhesAgendamentoPrestador() {
         </Card>
 
         <Card style={styles.person}>
-          <Avatar nome={item.cliente.nome} size={44} />
+          <Avatar nome={item.cliente.nome} size={44} uri={item.cliente.fotoUrl} />
           <View>
             <Text style={styles.name}>{item.cliente.nome}</Text>
             <Text style={styles.since}>Cliente Nesha desde {item.cliente.desde}</Text>
@@ -111,12 +141,53 @@ export default function DetalhesAgendamentoPrestador() {
             onPress={copiarTelefone}
           />
         </Card>
+
+        {!!erro && <Notice tone="error" icon="alert-circle-outline" text={erro} />}
+
+        {estado.podeResponder && (
+          <View style={styles.acoes}>
+            <Button
+              title="Recusar"
+              variant="danger"
+              style={styles.flex}
+              loading={enviando === 'recusar'}
+              disabled={enviando !== null}
+              onPress={() => executar('recusar')}
+            />
+            <Button
+              title="Aceitar"
+              style={styles.flex}
+              loading={enviando === 'aceitar'}
+              disabled={enviando !== null}
+              onPress={() => executar('aceitar')}
+            />
+          </View>
+        )}
+
+        {estado.podeConcluir && (
+          <Button
+            title="Marcar como concluído"
+            icon="checkmark-done-outline"
+            loading={enviando === 'concluir'}
+            onPress={() => executar('concluir')}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  loading: {
+    marginTop: 32,
+  },
+  acoes: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

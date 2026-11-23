@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Href, useRouter } from 'expo-router';
@@ -6,27 +7,42 @@ import { BottomNav } from '../../../src/components/BottomNav';
 import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { IconLine } from '../../../src/components/InfoRow';
+import { Notice } from '../../../src/components/Notice';
 import { StatusBadge } from '../../../src/components/StatusBadge';
 import {
   aceitarSolicitacao,
+  carregarAgendamentos,
   formatarValor,
+  mensagemDeErro,
   recusarSolicitacao,
 } from '../../../src/data/agendamentos';
 import { estadoDe } from '../../../src/data/estadosAgendamento';
-import { useAgendamentos } from '../../../src/data/useAgendamentos';
+import {
+  useAgendamentos,
+  useRecarregarAoFocar,
+  useSituacaoAgendamentos,
+} from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
 
 export default function NovasSolicitacoes() {
   const router = useRouter();
   const agendamentos = useAgendamentos();
+  const { carregando } = useSituacaoAgendamentos();
+  useRecarregarAoFocar();
   const pendentes = agendamentos.filter((a) => estadoDe(a).podeResponder);
+  const [respondendo, setRespondendo] = useState<string | null>(null);
+  const [erro, setErro] = useState('');
 
   // A lista se atualiza sozinha (useAgendamentos assina as mudanças).
-  function responder(id: string, aceitar: boolean) {
-    if (aceitar) {
-      aceitarSolicitacao(id);
-    } else {
-      recusarSolicitacao(id);
+  async function responder(id: string, aceitar: boolean) {
+    setRespondendo(id);
+    setErro('');
+    try {
+      await (aceitar ? aceitarSolicitacao(id) : recusarSolicitacao(id));
+    } catch (error) {
+      setErro(mensagemDeErro(error));
+    } finally {
+      setRespondendo(null);
     }
   }
 
@@ -44,12 +60,15 @@ export default function NovasSolicitacoes() {
                 : `${pendentes.length} novas propostas pendentes`}
           </Text>
           <TouchableOpacity
-            onPress={() => router.replace('/prestador/solicitacoes' as Href)}
+            onPress={() => carregarAgendamentos()}
+            disabled={carregando}
             accessibilityRole="button"
           >
             <Text style={styles.reload}>Recarregar</Text>
           </TouchableOpacity>
         </View>
+
+        {!!erro && <Notice tone="error" icon="alert-circle-outline" text={erro} />}
 
         {pendentes.map((item) => (
           <Card key={item.id} style={styles.card}>
@@ -59,7 +78,7 @@ export default function NovasSolicitacoes() {
             </View>
 
             <View style={styles.person}>
-              <Avatar nome={item.cliente.nome} size={40} />
+              <Avatar nome={item.cliente.nome} size={40} uri={item.cliente.fotoUrl} />
               <View>
                 <Text style={styles.name}>{item.cliente.nome}</Text>
                 <Text style={styles.service}>{item.servico}</Text>
@@ -82,6 +101,7 @@ export default function NovasSolicitacoes() {
                 title="Recusar"
                 accessibilityHint={`Recusa a solicitação de ${item.cliente.nome}`}
                 style={styles.flex}
+                disabled={respondendo !== null}
                 onPress={() => responder(item.id, false)}
               />
               <Button
@@ -98,6 +118,8 @@ export default function NovasSolicitacoes() {
                 title="Aceitar"
                 accessibilityHint={`Confirma o agendamento com ${item.cliente.nome}`}
                 style={styles.flex}
+                loading={respondendo === item.id}
+                disabled={respondendo !== null}
                 onPress={() => responder(item.id, true)}
               />
             </View>

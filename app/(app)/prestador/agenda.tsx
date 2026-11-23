@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Href, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/Avatar';
@@ -14,10 +8,22 @@ import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { FilterChips } from '../../../src/components/FilterChips';
 import { IconLine } from '../../../src/components/InfoRow';
+import { Notice } from '../../../src/components/Notice';
+import { SeletorDeDias } from '../../../src/components/SeletorDeDias';
 import { StatusBadge } from '../../../src/components/StatusBadge';
-import { formatarValor, StatusAgendamento } from '../../../src/data/agendamentos';
-import { useAgendamentos } from '../../../src/data/useAgendamentos';
+import { formatarValor, StatusAgendamento, textoPeriodo } from '../../../src/data/agendamentos';
+import {
+  useAgendamentos,
+  useRecarregarAoFocar,
+  useSituacaoAgendamentos,
+} from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
+import { chaveDoDia, inicioDoDia } from '../../../src/utils/datas';
+
+// Abre o endereço no app de mapas do aparelho (ou no navegador).
+function abrirNoMapa(endereco: string) {
+  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`);
+}
 
 const ABAS: readonly { key: StatusAgendamento; label: string }[] = [
   { key: 'CONFIRMADO', label: 'Confirmados' },
@@ -25,29 +31,22 @@ const ABAS: readonly { key: StatusAgendamento; label: string }[] = [
   { key: 'CONCLUIDO', label: 'Concluídos' },
 ];
 
-// Semana mostrada no calendário (mockada). Trocar por cálculo real com datas depois.
-const MES = 'Maio 2026';
-const HOJE = 15;
-const SEMANA = [
-  { dia: 13, sigla: 'S' },
-  { dia: 14, sigla: 'T' },
-  { dia: 15, sigla: 'Q' },
-  { dia: 16, sigla: 'Q' },
-  { dia: 17, sigla: 'S' },
-];
-
 export default function AgendaPrestador() {
   const router = useRouter();
   const agendamentos = useAgendamentos();
+  const { carregando, carregado, erro } = useSituacaoAgendamentos();
+  useRecarregarAoFocar();
+
+  const hoje = inicioDoDia(new Date());
   const [aba, setAba] = useState<StatusAgendamento>('CONFIRMADO');
-  const [diaSelecionado, setDiaSelecionado] = useState(HOJE);
+  const [primeiroDia, setPrimeiroDia] = useState(hoje);
+  const [diaSelecionado, setDiaSelecionado] = useState(chaveDoDia(hoje));
 
   const abrir = (id: string) =>
     router.push(`/prestador/agendamento/${id}` as Href);
 
-  const doDia = agendamentos.filter(
-    (a) => a.status === 'CONFIRMADO' && a.dia === diaSelecionado
-  );
+  const confirmados = agendamentos.filter((a) => a.status === 'CONFIRMADO');
+  const doDia = confirmados.filter((a) => a.data === diaSelecionado);
   const outros = agendamentos.filter((a) => a.status === aba);
 
   return (
@@ -57,6 +56,11 @@ export default function AgendaPrestador() {
       <FilterChips options={ABAS} value={aba} onChange={setAba} />
 
       <ScrollView contentContainerStyle={styles.content}>
+        {!!erro && <Notice tone="error" icon="alert-circle-outline" text={erro} />}
+        {carregando && !carregado && (
+          <ActivityIndicator color={colors.primary} accessibilityLabel="Carregando agenda" />
+        )}
+
         <Button
           title="Ver novas solicitações"
           variant="outline"
@@ -67,42 +71,23 @@ export default function AgendaPrestador() {
         {aba === 'CONFIRMADO' ? (
           <>
             <Card>
-              <View style={styles.monthRow}>
-                <Text style={styles.month}>{MES}</Text>
-                <TouchableOpacity
-                  onPress={() => setDiaSelecionado(HOJE)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ir para hoje"
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Text style={styles.today}>Hoje</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.week}>
-                {SEMANA.map(({ dia, sigla }) => {
-                  const selecionado = dia === diaSelecionado;
-                  return (
-                    <TouchableOpacity
-                      key={dia}
-                      style={styles.dayWrap}
-                      onPress={() => setDiaSelecionado(dia)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${sigla}, dia ${dia}`}
-                      accessibilityState={{ selected: selecionado }}
-                    >
-                      <Text style={styles.dayLabel}>{sigla}</Text>
-                      <View style={[styles.day, selecionado && styles.daySelected]}>
-                        <Text
-                          style={[styles.dayText, selecionado && styles.dayTextSelected]}
-                        >
-                          {dia}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <SeletorDeDias
+                primeiroDia={primeiroDia}
+                selecionado={diaSelecionado}
+                onSelecionar={setDiaSelecionado}
+                onMudarPagina={(dia) => {
+                  setPrimeiroDia(dia);
+                  setDiaSelecionado(chaveDoDia(dia));
+                }}
+                comCompromisso={(chave) => confirmados.some((a) => a.data === chave)}
+                acao={{
+                  titulo: 'Hoje',
+                  onPress: () => {
+                    setPrimeiroDia(hoje);
+                    setDiaSelecionado(chaveDoDia(hoje));
+                  },
+                }}
+              />
             </Card>
 
             <Text style={styles.section}>Compromissos do Dia</Text>
@@ -115,7 +100,7 @@ export default function AgendaPrestador() {
               <Card key={item.id} style={styles.cardHighlight}>
                 <View style={styles.cardTop}>
                   <Text style={styles.time}>
-                    {item.horarioInicio} - Período da {item.periodo}
+                    {item.horarioInicio} - {textoPeriodo(item.periodo)}
                   </Text>
                   <StatusBadge status={item.status} />
                 </View>
@@ -140,7 +125,7 @@ export default function AgendaPrestador() {
                     compact
                     title="Ver rota no mapa"
                     style={styles.flex}
-                    onPress={() => {}}
+                    onPress={() => abrirNoMapa(`${item.endereco}, ${item.regiao}, ${item.cidade}`)}
                   />
                   <Button
                     compact
@@ -222,53 +207,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     marginVertical: 12,
-  },
-  monthRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  month: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  today: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  week: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  dayWrap: {
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  dayLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  day: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  daySelected: {
-    backgroundColor: colors.primary,
-  },
-  dayText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  dayTextSelected: {
-    color: colors.primaryText,
   },
   section: {
     fontSize: 14,

@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../src/theme/colors';
-import { mockProfessionals, mockServices, Professional } from '../../src/utils/mocks';
+import { Avatar } from '../../src/components/Avatar';
+import { mensagemDeErro } from '../../src/data/agendamentos';
+import { precoDoPrestador, textoAvaliacoes } from '../../src/data/usePrestador';
+import { listarPrestadores } from '../../src/services/agendamentos';
+import { urlFoto } from '../../src/services/auth';
+import type { PrestadorCatalogo } from '../../src/types/agendamento';
+import { mockServices } from '../../src/utils/mocks';
 import {
   CriterioProfissionais,
   ESTRATEGIAS_PROFISSIONAIS,
@@ -15,22 +21,49 @@ export default function ListaProfissionaisScreen() {
   const router = useRouter();
   const { serviceIds } = useLocalSearchParams<{ serviceIds?: string }>();
   const selectedServices = mockServices.filter((service) => serviceIds?.split(',').includes(service.id));
+  const titulos = selectedServices.map((service) => service.title).join('|');
   const [criterio, setCriterio] = useState<CriterioProfissionais>('recomendados');
-  const profissionais = ordenarProfissionais(mockProfessionals, criterio);
+  const [prestadores, setPrestadores] = useState<PrestadorCatalogo[] | null>(null);
+  const [erro, setErro] = useState('');
 
-  const renderCard = ({ item }: { item: Professional }) => (
+  // O "serviço principal" do prestador usa os mesmos nomes das categorias do catálogo.
+  useEffect(() => {
+    let ativo = true;
+    listarPrestadores(titulos ? titulos.split('|') : [])
+      .then((lista) => {
+        if (ativo) setPrestadores(lista);
+      })
+      .catch((error: unknown) => {
+        if (ativo) setErro(mensagemDeErro(error, 'Não foi possível carregar os profissionais.'));
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [titulos]);
+
+  const profissionais = ordenarProfissionais(prestadores ?? [], criterio);
+
+  const renderCard = ({ item }: { item: PrestadorCatalogo }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.avatarPlaceholder}>
-           <Feather name="user" size={24} color={colors.primary} />
+        <View style={styles.avatar}>
+          <Avatar nome={item.nome} size={56} uri={urlFoto(item.fotoUrl)} />
         </View>
         <View style={styles.cardHeaderInfo}>
-          <Text style={styles.profName}>{item.name}</Text>
-          <Text style={styles.profRole}>Parceiro desde {item.memberSince}</Text>
+          <Text style={styles.profName}>{item.nome}</Text>
+          <Text style={styles.profRole}>
+            {item.servicoPrincipal} • Parceiro desde {item.desde}
+          </Text>
           <View style={styles.ratingRow}>
             <Feather name="star" size={14} color={colors.star} style={{ marginRight: 4 }} />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-            <Text style={styles.reviewsText}>({item.reviewsCount} avaliações)</Text>
+            {item.nota == null ? (
+              <Text style={styles.reviewsText}>Novo profissional</Text>
+            ) : (
+              <>
+                <Text style={styles.ratingText}>{item.nota.toFixed(1).replace('.', ',')}</Text>
+                <Text style={styles.reviewsText}>({textoAvaliacoes(item.avaliacoes)})</Text>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -38,23 +71,23 @@ export default function ListaProfissionaisScreen() {
       <View style={styles.detailsContainer}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Atendimento</Text>
-          <Text style={styles.detailValue}>{item.location}</Text>
+          <Text style={styles.detailValue}>{item.areaAtendimento}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Valor médio</Text>
-          <Text style={styles.detailValueHighlight}>{item.pricePerDay}</Text>
+          <Text style={styles.detailValueHighlight}>{precoDoPrestador(item)}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Dias de atendimento</Text>
-          <Text style={styles.detailValueBold}>{item.availability}</Text>
+          <Text style={styles.detailValueBold}>{item.disponibilidade || 'Todos os dias'}</Text>
         </View>
       </View>
 
       <TouchableOpacity
         style={styles.actionButton}
-        onPress={() => router.push('/profissional')}
+        onPress={() => router.push({ pathname: '/profissional', params: { id: item.id } })}
         accessibilityRole="button"
-        accessibilityLabel={`Visualizar perfil e agendar com ${item.name}`}
+        accessibilityLabel={`Visualizar perfil e agendar com ${item.nome}`}
       >
         <Text style={styles.actionButtonText}>Visualizar Perfil e Agendar</Text>
       </TouchableOpacity>
@@ -75,7 +108,7 @@ export default function ListaProfissionaisScreen() {
         </TouchableOpacity>
         
         <View style={styles.titleRow}>
-          <Text style={styles.title}>{selectedServices.length > 0 ? 'Profissionais' : 'Jardineiros'}</Text>
+          <Text style={styles.title}>Profissionais</Text>
           <TouchableOpacity style={styles.filterIcon} accessibilityRole="button" accessibilityLabel="Filtros">
              <Feather name="sliders" size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -113,7 +146,17 @@ export default function ListaProfissionaisScreen() {
           keyExtractor={item => item.id}
           renderItem={renderCard}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>Nenhum profissional atende hoje.</Text>
+            erro ? (
+              <Text style={styles.emptyText}>{erro}</Text>
+            ) : prestadores === null ? (
+              <ActivityIndicator color={colors.primary} accessibilityLabel="Carregando profissionais" />
+            ) : (
+              <Text style={styles.emptyText}>
+                {criterio === 'disponiveisHoje'
+                  ? 'Nenhum profissional atende hoje.'
+                  : 'Nenhum profissional disponível para este serviço ainda.'}
+              </Text>
+            )
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -219,13 +262,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 16,
   },
-  avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatar: {
     marginRight: 16,
   },
   cardHeaderInfo: {

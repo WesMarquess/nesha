@@ -32,6 +32,16 @@
 | PUT | `/usuarios/me/senha` | Bearer | Alterar senha (os dois perfis) |
 | PUT | `/usuarios/me/foto` | Bearer | Alterar foto de perfil (os dois perfis, multipart) |
 | GET | `/usuarios/{usuarioId}/foto` | Público | Exibir a foto de um usuário |
+| GET | `/prestadores?servico=` | Bearer | Lista de profissionais do catálogo |
+| GET | `/prestadores/{id}` | Bearer | Perfil público do profissional |
+| GET | `/prestadores/{id}/horarios-ocupados` | Bearer | Horários já ocupados (tela de agendar) |
+| GET | `/prestadores/{id}/avaliacoes` | Bearer | Todas as avaliações do profissional |
+| POST | `/agendamentos` | Bearer (cliente) | Solicitar um agendamento |
+| GET | `/agendamentos` | Bearer | Agenda do cliente ou do prestador |
+| GET | `/agendamentos/{id}` | Bearer | Detalhes de um agendamento |
+| POST | `/agendamentos/{id}/{cancelar\|aceitar\|recusar\|concluir\|avaliacao}` | Bearer | Ações do ciclo de vida |
+
+Os endpoints de agendamento e de catálogo de profissionais estão detalhados em `docs/AGENDA.md`, seção 11.
 | POST | `/auth/forgot-password` | Público | Previsto (tela ainda não existe) |
 | POST | `/auth/refresh` | Público | Previsto, opcional |
 
@@ -254,8 +264,8 @@ precisam dos dados básicos (`id`, `nome`, `email`, `perfil`), use `GET /usuario
   Começa `true` no cadastro.
 - `fotoUrl`: caminho **relativo à base da API** (`/api/v1`); o app monta a URL completa. `null` se
   não houver foto. O parâmetro `v` muda a cada envio, para o app não mostrar uma foto antiga do cache.
-- `rating`/`reviewsCount` do mock do app **não** aparecem aqui — dependem da entidade de avaliação,
-  que ainda não existe (ligada aos agendamentos).
+- Nota e número de avaliações não vêm aqui: aparecem no perfil público, `GET /prestadores/{id}`
+  (`docs/AGENDA.md`, seção 11).
 
 **Erros**
 
@@ -469,11 +479,14 @@ Toda resposta de erro (4xx/5xx) deve seguir este corpo:
 | 400 | `VALIDACAO` |
 | 401 | `CREDENCIAIS_INVALIDAS`, `TOKEN_INVALIDO`, `TOKEN_EXPIRADO` |
 | 400 | `FOTO_INVALIDA`, `SENHA_ATUAL_INCORRETA`, `SENHA_IGUAL_A_ATUAL` |
-| 403 | `PERFIL_INVALIDO` |
+| 403 | `PERFIL_INVALIDO`, `ACESSO_NEGADO` |
 | 404 | `PRESTADOR_NAO_ENCONTRADO`, `CLIENTE_NAO_ENCONTRADO`, `FOTO_NAO_ENCONTRADA` |
 | 409 | `EMAIL_JA_CADASTRADO`, `CPF_JA_CADASTRADO` |
 | 413 | `FOTO_MUITO_GRANDE` |
 | 500 | `ERRO_INTERNO` |
+
+Os códigos dos agendamentos (`TRANSICAO_INVALIDA`, `CONFLITO_DE_HORARIO`, `DIA_INDISPONIVEL` etc.) estão em
+`docs/AGENDA.md`, seção 11.3.
 
 ---
 

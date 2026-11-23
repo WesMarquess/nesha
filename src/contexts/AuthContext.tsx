@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { limparAgendamentos } from '../data/agendamentos';
 import { ApiError, setAuthToken, setUnauthorizedHandler } from '../services/api';
 import { getMe, login } from '../services/auth';
 import { clearToken, loadToken, saveToken } from '../services/session';
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     setAuthToken(null);
     await clearToken();
+    limparAgendamentos();
     setUsuario(null);
   }, []);
 
@@ -89,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
+    limparAgendamentos();
     setAuthToken(resposta.accessToken);
     await saveToken(resposta.accessToken);
     setUsuario(resposta.usuario);

@@ -17,6 +17,7 @@ export type EstadoAgendamento = {
   podeResponder: boolean; // prestador aceita ou recusa
   podeCancelar: boolean;
   podeAvaliar: boolean;
+  podeConcluir: boolean; // prestador marca o serviço como realizado
   aceitar(ag: Agendamento): Agendamento;
   recusar(ag: Agendamento): Agendamento;
   cancelar(ag: Agendamento, motivo: string): Agendamento;
@@ -34,6 +35,7 @@ function estadoBase(status: StatusAgendamento): EstadoAgendamento {
     podeResponder: false,
     podeCancelar: false,
     podeAvaliar: false,
+    podeConcluir: false,
     aceitar: invalida('aceitar'),
     recusar: invalida('recusar'),
     cancelar: invalida('cancelar'),
@@ -54,6 +56,7 @@ const Pendente: EstadoAgendamento = {
 const Confirmado: EstadoAgendamento = {
   ...estadoBase('CONFIRMADO'),
   podeCancelar: true,
+  podeConcluir: true,
   cancelar: (ag, motivo) => ({ ...ag, status: 'CANCELADO', motivoCancelamento: motivo }),
   concluir: (ag) => ({ ...ag, status: 'CONCLUIDO' }),
 };

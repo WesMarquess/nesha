@@ -4,8 +4,10 @@
 > Cobre as telas do **Cliente** e do **Prestador**, o modelo de dados, as regras de negócio já
 > implementadas, as limitações atuais e a proposta de integração com o backend.
 >
-> **Estado atual:** o módulo funciona com **dados mockados em memória** (`src/data/agendamentos.ts`).
-> O backend Spring Boot ainda **não** possui entidades nem endpoints de agendamento.
+> **Estado atual:** integrado ao backend. Os agendamentos vêm de `/api/v1/agendamentos` (seção 11) e o
+> cliente cria um agendamento pela tela `agenda-contratacao` (`/agendar/[prestadorId]`). O pagamento ainda
+> não existe: o agendamento nasce `PENDENTE` e o prestador aceita ou recusa. Com
+> `EXPO_PUBLIC_USE_MOCK=true` o app usa dados simulados (`src/services/agendamentos.ts`).
 
 ## Sumário
 
@@ -45,13 +47,14 @@ As pastas entre parênteses, como `(app)`, são grupos do Expo Router e **não a
 
 | Rota | Arquivo | Perfil | Função |
 |---|---|---|---|
-| `/agenda` | `app/(app)/agenda.tsx` | Cliente | Lista "Minha Agenda" com filtro por status |
+| `/agendar/[prestadorId]` | `app/(app)/agendar/[prestadorId].tsx` | Cliente | Escolher dia e horário e solicitar o agendamento (`agenda-contratacao`) |
+| `/agenda` | `app/(app)/agenda.tsx` | Cliente | Lista "Minha Agenda" com filtro por status (aceita `?aba=PENDENTE` etc.) |
 | `/agendamento/[id]` | `app/(app)/agendamento/[id].tsx` | Cliente | Detalhes do agendamento, copiar telefone, botões de cancelar/avaliar |
 | `/cancelar/[id]` | `app/(app)/cancelar/[id].tsx` | Cliente | Cancelamento com motivo obrigatório e confirmação |
 | `/avaliar/[id]` | `app/(app)/avaliar/[id].tsx` | Cliente | Avaliação com nota, destaques e comentário |
 | `/prestador/agenda` | `app/(app)/prestador/agenda.tsx` | Prestador | Painel com calendário semanal, compromissos do dia e filtro por status |
 | `/prestador/solicitacoes` | `app/(app)/prestador/solicitacoes.tsx` | Prestador | Novas solicitações: aceitar, recusar ou ver detalhes |
-| `/prestador/agendamento/[id]` | `app/(app)/prestador/agendamento/[id].tsx` | Prestador | Detalhes do atendimento e contato do cliente |
+| `/prestador/agendamento/[id]` | `app/(app)/prestador/agendamento/[id].tsx` | Prestador | Detalhes do atendimento, contato do cliente, aceitar/recusar e marcar como concluído |
 
 ### Mapa de navegação
 
@@ -71,9 +74,8 @@ flowchart TD
     end
 ```
 
-A barra inferior (`BottomNav`) liga **Catálogo** (`/home`), **Agenda** e **Perfil** (`/perfil`).
-O destino da aba Agenda é configurável pela prop `agendaHref`: padrão `/agenda` (Cliente) e
-`/prestador/agenda` (Prestador).
+A barra inferior (`BottomNav`) liga **Catálogo** (`/home`), **Agenda** e **Perfil** para o cliente, e
+**Agenda** e **Perfil** para o prestador (prop `area="prestador"`).
 
 ### Proteção das rotas
 
@@ -81,7 +83,7 @@ Todas as telas ficam dentro do grupo `(app)`, cujo `_layout.tsx` redireciona par
 não há sessão. Existe uma chave de desenvolvimento em `src/config/dev.ts`:
 
 ```ts
-export const PULAR_LOGIN = true; // pula o login e abre direto as telas
+export const PULAR_LOGIN = false; // true pula o login e abre direto as telas
 ```
 
 > ⚠️ **Volte `PULAR_LOGIN` para `false` antes de entregar o projeto.** Enquanto estiver `true`,
@@ -93,12 +95,12 @@ export const PULAR_LOGIN = true; // pula o login e abre direto as telas
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDENTE: criação (ainda não implementada no app)
+    [*] --> PENDENTE: cliente solicita (/agendar)
     PENDENTE --> CONFIRMADO: Prestador aceita
     PENDENTE --> CANCELADO: Prestador recusa
     PENDENTE --> CANCELADO: Cliente cancela com motivo
     CONFIRMADO --> CANCELADO: Cliente cancela com motivo
-    CONFIRMADO --> CONCLUIDO: conclusão (ainda não implementada)
+    CONFIRMADO --> CONCLUIDO: Prestador marca como concluído
     CONCLUIDO --> CONCLUIDO: Cliente avalia uma única vez
 ```
 
@@ -113,10 +115,15 @@ Quem pode fazer o quê, conforme o código atual:
 
 | Ação | Quem | De → Para | Função |
 |---|---|---|---|
-| Aceitar solicitação | Prestador | `PENDENTE` → `CONFIRMADO` | `atualizarStatus` |
-| Recusar solicitação | Prestador | `PENDENTE` → `CANCELADO` (sem motivo) | `atualizarStatus` |
+| Solicitar | Cliente | → `PENDENTE` | `criarAgendamento` |
+| Aceitar solicitação | Prestador | `PENDENTE` → `CONFIRMADO` | `aceitarSolicitacao` |
+| Recusar solicitação | Prestador | `PENDENTE` → `CANCELADO` | `recusarSolicitacao` |
 | Cancelar agendamento | Cliente | `PENDENTE` ou `CONFIRMADO` → `CANCELADO` (com motivo) | `cancelarAgendamento` |
-| Avaliar serviço | Cliente | `CONCLUIDO` (grava `avaliacao`) | `avaliarAgendamento` |
+| Concluir serviço | Prestador | `CONFIRMADO` → `CONCLUIDO` | `concluirAgendamento` |
+| Avaliar serviço | Cliente | `CONCLUIDO` (grava `avaliacao`, uma única vez) | `avaliarAgendamento` |
+
+O backend aplica o mesmo ciclo com o padrão State em `StatusAgendamento.java`; o app valida antes de chamar a
+API (`estadoDe(item)`), e o backend confirma.
 
 ---
 
@@ -137,17 +144,19 @@ type Agendamento = {
   id: string;
   status: StatusAgendamento;
   servico: string;
-  valor: number;
-  prestador: { nome: string; nota: number; avaliacoes: number; telefone: string };
-  cliente:   { nome: string; desde: string; telefone: string };
-  dia: number;                 // dia do mês (usado no calendário do prestador)
+  valor: number | null;        // null = "A combinar"
+  prestador: { id: string; nome: string; nota: number | null; avaliacoes: number; telefone: string; fotoUrl?: string };
+  cliente:   { id: string; nome: string; desde: string; telefone: string; fotoUrl?: string };
+  inicio: Date;
+  fim: Date;
+  data: string;                // "2026-05-15" (usado no calendário do prestador)
   dataCurta: string;           // "15 Mai"
   dataLonga: string;           // "15 de Maio, Quarta-feira"
-  periodo: 'Manhã' | 'Tarde' | 'Noite';
+  periodo: 'Manhã' | 'Tarde' | 'Fim de tarde';
   horarioInicio: string;       // "13:00"
   horario: string;             // "13:00 às 17:00"
   cidade: string;
-  regiao: string;              // "Zona Sul"
+  regiao: string;              // bairro do endereço, ex.: "Vila Mariana"
   endereco: string;            // "Rua das Flores, 123 - Apt 42"
   observacoes?: string;        // escritas pelo cliente, exibidas ao prestador
   motivoCancelamento?: string; // preenchido quando o cliente cancela
@@ -157,8 +166,8 @@ type Agendamento = {
 
 Observações sobre os campos:
 
-- `dia`, `dataCurta`, `dataLonga`, `periodo`, `horarioInicio` e `horario` são valores **já formatados**
-  para exibição. Com o backend, o ideal é receber datas em ISO 8601 e formatar no app (ver seção 11).
+- O backend envia `inicio`/`fim` em ISO 8601; `deApi` (padrão Adapter) deriva `data`, `dataCurta`,
+  `dataLonga`, `periodo`, `horarioInicio` e `horario` no fuso do aparelho, e aplica a máscara nos telefones.
 - Nas listas, o endereço mostrado no card é só a parte antes de `" - "` (o complemento fica para a tela
   de detalhes): `item.endereco.split(' - ')[0]`.
 
@@ -176,36 +185,48 @@ Observações sobre os campos:
 
 ### 5.1 Funções (`src/data/agendamentos.ts`)
 
-Os agendamentos ficam em uma variável de módulo (`let agendamentos`), **sem persistência**: ao recarregar
-o app, voltam ao estado inicial. Toda alteração gera uma nova lista (imutabilidade).
+A lista do usuário logado fica em memória (padrão Observer) e é preenchida por `carregarAgendamentos()`.
+As ações são **assíncronas**: validam a transição no estado atual (padrão State), chamam a API e trocam o
+item pela resposta do backend. Erros chegam como `ApiError` ou `TransicaoInvalidaError`; `mensagemDeErro`
+devolve o texto para exibir.
 
 | Função | O que faz |
 |---|---|
-| `listarAgendamentos()` | Retorna uma cópia da lista |
-| `buscarAgendamento(id?)` | Retorna um agendamento ou `undefined` |
-| `atualizarStatus(id, status)` | Troca o status (usada por aceitar/recusar) |
-| `cancelarAgendamento(id, motivo)` | Status `CANCELADO` + `motivoCancelamento` |
-| `avaliarAgendamento(id, avaliacao)` | Grava a `avaliacao` |
-| `formatarValor(valor)` | `160` → `"R$ 160,00"` |
-| `primeiroNome(nome)` | `"Francisco Oliveira"` → `"Francisco"` |
-
-> O comentário no topo do arquivo define o plano de migração: ao integrar o backend, **troque o corpo
-> dessas funções por chamadas em `src/services/`**; as telas não precisam mudar (exceto onde as funções
-> passarem a ser assíncronas — ver seção 11.4).
+| `carregarAgendamentos()` | Busca `GET /agendamentos` (chamadas simultâneas compartilham a requisição) |
+| `limparAgendamentos()` | Esvazia a lista ao entrar ou sair da conta |
+| `listarAgendamentos()` / `buscarAgendamento(id?)` | Leem a lista em memória |
+| `criarAgendamento(dados)` | `POST /agendamentos` |
+| `aceitarSolicitacao` / `recusarSolicitacao` / `concluirAgendamento` | Ações do prestador |
+| `cancelarAgendamento(id, motivo)` / `avaliarAgendamento(id, avaliacao)` | Ações do cliente |
+| `formatarValor(valor)` | `160` → `"R$ 160,00"`; `null` → `"A combinar"` |
+| `textoPeriodo(periodo)` | `"Período da Tarde"` ou `"Fim de tarde"` |
 
 ### 5.2 Hooks (`src/data/useAgendamentos.ts`)
 
 | Hook | Retorno | Comportamento |
 |---|---|---|
-| `useAgendamentos()` | `Agendamento[]` | Lê a lista e **recarrega toda vez que a tela volta ao foco** |
+| `useAgendamentos()` | `Agendamento[]` | Assina a lista (redesenha a cada mudança) |
 | `useAgendamento(id?)` | `Agendamento \| undefined` | Idem, para um único item |
-
-Ambos usam `useFocusEffect` do Expo Router. É por isso que, depois de cancelar ou avaliar em outra tela e
-voltar com `router.replace('/agenda')`, a lista aparece atualizada.
+| `useSituacaoAgendamentos()` | `{ carregando, carregado, erro }` | Estado da última busca |
+| `useRecarregarAoFocar()` | — | Busca de novo no backend sempre que a tela ganha foco |
 
 ---
 
 ## 6. Detalhamento das telas
+
+### 6.0 Cliente — Selecione Data e Hora (`/agendar/[prestadorId]`)
+
+Aberta pelo botão **Agendar com…** no perfil do profissional (`/profissional?id=`), que agora vem de
+`GET /prestadores/{id}`.
+
+- Faixa de 5 dias (`SeletorDeDias`) a partir de hoje; dias em que o profissional não atende ficam desativados.
+- **Horários Disponíveis**: 08:00 (Manhã, até 12:00), 13:00 (Tarde, até 17:00) e 17:00 (Fim de tarde, até 20:00).
+  Horários já pedidos ou confirmados (`GET /prestadores/{id}/horarios-ocupados`) e horários passados aparecem
+  como **Indisponível**.
+- **Período de Atendimento Estimado** e **valor estimado** (mesma regra de cálculo do backend).
+- **Observações para o profissional** (opcional, até 500 caracteres), exibidas no detalhe do prestador.
+- **Solicitar Agendamento** → `criarAgendamento(...)` e volta para `/agenda?aba=PENDENTE` com o aviso
+  "Solicitação enviada!". No Figma o botão é "Ir para Pagamento"; o pagamento entra numa próxima etapa.
 
 ### 6.1 Cliente — Minha Agenda (`/agenda`)
 
@@ -224,7 +245,7 @@ voltar com `router.replace('/agenda')`, a lista aparece atualizada.
 
   | Status | Título | Subtítulo |
   |---|---|---|
-  | `CONFIRMADO` | Agendamento Confirmado | O jardineiro {nome} confirmou o horário. |
+  | `CONFIRMADO` | Agendamento Confirmado | {nome} confirmou o horário. |
   | `PENDENTE` | Aguardando confirmação | Esperando {nome} confirmar o horário. |
   | `CONCLUIDO` | Serviço Concluído | {nome} finalizou o serviço. |
   | `CANCELADO` | Agendamento Cancelado | Motivo informado, ou "Este serviço foi cancelado." |
@@ -245,17 +266,19 @@ voltar com `router.replace('/agenda')`, a lista aparece atualizada.
 2. Seletor de motivo (lista suspensa com `MOTIVOS_CANCELAMENTO`).
 3. Aviso de que o **reembolso pode ocorrer em até 30 dias**, dependendo do método de pagamento.
 4. **Confirmar Cancelamento**:
-   - sem motivo → `Alert` "Selecione um motivo";
-   - com motivo → `Alert` "Cancelar serviço? Essa ação não pode ser desfeita." (Voltar / Confirmar);
-   - ao confirmar: `cancelarAgendamento(id, motivo)` e `router.replace('/agenda')`.
+   - sem motivo → mensagem "Selecione o motivo do cancelamento.";
+   - com motivo → confirmação na própria tela ("Cancelar este serviço? Essa ação não pode ser desfeita.",
+     Voltar / Confirmar). Não usa `Alert`, que não aparece na versão web;
+   - ao confirmar: `cancelarAgendamento(id, motivo)` e volta para `/agenda?aba=CANCELADO` com o aviso
+     "Agendamento cancelado.".
 
 ### 6.4 Cliente — Avaliar (`/avaliar/[id]`)
 
 - **Nota** de 1 a 5 estrelas (padrão **5**), com rótulo: 1 Péssimo · 2 Ruim · 3 Regular · 4 Muito bom · 5 Excelente.
 - **Destaques**: seleção múltipla entre `DESTAQUES_AVALIACAO`.
 - **Comentário** opcional, multilinha, limite de **300 caracteres**.
-- **Enviar Avaliação**: `avaliarAgendamento(...)` (o comentário é salvo com `trim()`), `Alert`
-  "Obrigado! Sua avaliação foi enviada." e retorno para `/agenda`.
+- **Enviar Avaliação**: `avaliarAgendamento(...)` (o comentário é salvo com `trim()`) e volta para
+  `/agenda?aba=CONCLUIDO` com o aviso "Obrigado! Sua avaliação foi enviada.".
 - Usa `KeyboardAvoidingView` (iOS) e `keyboardShouldPersistTaps="handled"`.
 
 ### 6.5 Prestador — Painel de Agendamentos (`/prestador/agenda`)
@@ -263,14 +286,14 @@ voltar com `router.replace('/agenda')`, a lista aparece atualizada.
 - **Abas**: `Confirmados` (inicial), `Solicitados` (= `PENDENTE`) e `Concluídos`. Não há aba de cancelados.
 - Botão **Ver novas solicitações** → `/prestador/solicitacoes`.
 - **Aba Confirmados**:
-  - cartão de calendário com o mês, o botão **Hoje** e a semana (S T Q Q S, dias 13 a 17);
-  - tocar em um dia seleciona-o; a seção **Compromissos do Dia** lista os agendamentos `CONFIRMADO`
-    cujo `dia` é o dia selecionado (vazio: *"Nenhum compromisso neste dia."*);
-  - cada compromisso mostra horário de início, período, status, cliente, serviço, valor e local, com os
-    botões **Ver rota no mapa** (ainda sem ação) e **Ver informações** (→ `/prestador/agendamento/[id]`).
+  - calendário (`SeletorDeDias`) com 5 dias a partir de hoje, setas para avançar/voltar, botão **Hoje** e uma
+    bolinha nos dias com compromisso;
+  - a seção **Compromissos do Dia** lista os agendamentos `CONFIRMADO` do dia selecionado
+    (vazio: *"Nenhum compromisso neste dia."*);
+  - cada compromisso tem os botões **Ver rota no mapa** (abre o endereço no app de mapas) e
+    **Ver informações** (→ `/prestador/agendamento/[id]`).
 - **Demais abas**: cards com status, valor, cliente, serviço, data/horário e botão **Ver informações**
   (vazio: *"Nada por aqui ainda."*).
-- Os valores do calendário são constantes no arquivo: `MES = 'Maio 2026'`, `HOJE = 15` e o vetor `SEMANA`.
 
 ### 6.6 Prestador — Novas Solicitações (`/prestador/solicitacoes`)
 
@@ -278,11 +301,10 @@ voltar com `router.replace('/agenda')`, a lista aparece atualizada.
   *"Nenhuma proposta pendente"*, *"1 nova proposta pendente"*, *"N novas propostas pendentes"*.
 - Cada card tem o selo **Nova solicitação**, valor, cliente, serviço, data/horário e cidade/região.
 - Ações:
-  - **Recusar** → `atualizarStatus(id, 'CANCELADO')`;
-  - **Aceitar** → `atualizarStatus(id, 'CONFIRMADO')`;
+  - **Recusar** → `recusarSolicitacao(id)`;
+  - **Aceitar** → `aceitarSolicitacao(id)` (se houver conflito de horário, mostra o erro do backend);
   - **Ver detalhes** → `/prestador/agendamento/[id]`.
-- Depois de aceitar/recusar, a tela faz `router.replace('/prestador/solicitacoes')` para recarregar a lista.
-  O link **Recarregar** faz o mesmo.
+- A lista se atualiza sozinha depois de aceitar/recusar. O link **Recarregar** busca de novo no backend.
 
 ### 6.7 Prestador — Detalhes (`/prestador/agendamento/[id]`)
 
@@ -292,7 +314,8 @@ voltar com `router.replace('/agenda')`, a lista aparece atualizada.
 - Resumo: serviço, cidade, região, endereço, data, horário, **Observações do Cliente** (quando existirem) e
   valor total.
 - **Contato**: telefone do cliente com botão **Copiar telefone**.
-- Esta tela é somente leitura (não há botões de ação).
+- **Ações por status**: `PENDENTE` → **Recusar** / **Aceitar**; `CONFIRMADO` → **Marcar como concluído**
+  (`estadoDe(item).podeResponder` e `.podeConcluir`).
 
 ---
 
@@ -316,47 +339,23 @@ Cores e tokens visuais ficam em `src/theme/colors.ts`.
 
 ---
 
-## 8. Dados mockados e como testar
+## 8. Como testar
 
-### Registros iniciais
+1. Suba o backend (`cd backend && ./mvnw spring-boot:run`) e o app apontando para ele (`docs/API.md`, seção 7).
+2. Cadastre um **prestador** pela Área do Prestador, com serviço principal "Jardineiro", e defina o preço em
+   **Editar perfil**.
+3. Cadastre um **cliente**, vá em Catálogo → Ver todos → Jardineiro → Ver profissionais → Visualizar perfil →
+   **Agendar**, escolha dia e horário e solicite. O agendamento aparece em **Pendentes**.
+4. Entre como prestador → **Ver novas solicitações** → **Aceitar**. Ele aparece em **Confirmados**, no dia certo
+   do calendário. Abra **Ver informações** → **Marcar como concluído**.
+5. Entre como cliente → **Concluídos** → **Ver detalhes** → **Avaliar Serviço**. A nota passa a aparecer no
+   perfil do profissional e em "Todas as avaliações".
+6. Casos de erro: aceite dois pedidos no mesmo horário (o segundo dá `CONFLITO_DE_HORARIO`), escolha um dia em
+   que o prestador não atende (fica desativado) e cancele sem motivo.
 
-| id | Status | Serviço | Dia | Horário |
-|---|---|---|---|---|
-| `ag-1` | `CONFIRMADO` | Manutenção de Jardim | 15 (Qua) | 13:00 às 17:00 |
-| `ag-2` | `PENDENTE` | Manutenção de Jardim | 15 (Qua) | 13:00 às 17:00 |
-| `ag-3` | `CONCLUIDO` | Manutenção de Jardim | 2 (Qui) | 08:00 às 12:00 |
-
-Cliente: Mariana Oliveira · Prestador: Francisco Oliveira. Não há registro inicial `CANCELADO`.
-
-### Rodando
-
-```bash
-npm install
-npx expo install expo-clipboard   # ver pendência na seção 10
-npx expo start
-```
-
-### Roteiro de teste manual
-
-**Cliente**
-1. Abra `/agenda`: confira as quatro abas e o aviso das ferramentas no card confirmado.
-2. Em **Pendentes**, abra o detalhe de `ag-2` e cancele com um motivo; ele deve aparecer em **Cancelados**
-   com o motivo no cartão de status.
-3. Em **Concluídos**, abra `ag-3` → **Avaliar Serviço** → envie; ao voltar, o botão deve mostrar
-   **Serviço já avaliado**.
-4. Teste **Copiar telefone** e a tentativa de confirmar o cancelamento sem escolher motivo.
-
-**Prestador**
-1. Abra `/prestador/agenda` (ver abaixo como chegar). Selecione os dias 13 a 17 e confira **Compromissos do Dia**.
-2. Vá em **Ver novas solicitações**, aceite `ag-2` e confirme que ele passa a aparecer em **Confirmados**
-   (dia 15).
-3. Recuse uma solicitação e confira que o cliente a vê em **Cancelados**.
-
-### Como abrir a agenda do prestador
-
-Hoje **não há navegação baseada em perfil**: depois do login, qualquer usuário vai para `/home`, e nada no
-app leva a `/prestador/agenda`. Para ver essa tela em desenvolvimento, altere o destino em `app/index.tsx`
-(há um comentário indicando a troca de `'/agenda'` por `'/prestador/agenda'`) ou abra a rota diretamente.
+No **modo simulado** (`EXPO_PUBLIC_USE_MOCK=true`), há três agendamentos de exemplo com datas relativas a hoje
+(confirmado amanhã, pendente em 2 dias e concluído há 10 dias) entre o cliente e o prestador de teste
+(logins em `docs/API.md`, seção 7).
 
 ---
 
@@ -378,123 +377,97 @@ tela quando o telefone é copiado.
 
 ## 10. Limitações conhecidas e pendências
 
-**Funcionais**
-
 | # | Item | Detalhe |
 |---|---|---|
-| 1 | Sem persistência | Os dados vivem em memória; fechar o app reinicia tudo |
-| 2 | Sem criação de agendamento | Nenhuma tela cria um agendamento; o fluxo `[*] → PENDENTE` depende do catálogo/contratação |
-| 3 | Sem conclusão do serviço | Nenhuma tela faz a transição `CONFIRMADO` → `CONCLUIDO` |
-| 4 | Calendário fixo | Mês, "hoje" e semana são constantes (`Maio 2026`, dia 15, dias 13–17); sem navegar entre semanas/meses |
-| 5 | Filtro só por dia do mês | `dia` é um número, sem mês e ano; agendamentos de meses diferentes colidiriam |
-| 6 | "Ver rota no mapa" | O botão existe, mas `onPress` está vazio |
-| 7 | Sem checagem de conflito | `ag-1` e `ag-2` têm o mesmo dia e horário; o prestador consegue aceitar os dois |
-| 8 | Recusa sem motivo | Ao recusar, o cliente vê só "Este serviço foi cancelado." |
-| 9 | Sem tratamento de carregamento/erro | As telas não têm estados de loading nem de falha de rede (hoje não são necessários) |
-| 10 | Sem navegação por perfil | Ver seção 8 |
-
-**Técnicas**
-
-| # | Item | Detalhe |
-|---|---|---|
-| 1 | `expo-clipboard` fora do `package.json` | É importado em `agendamento/[id].tsx` e `prestador/agendamento/[id].tsx`, mas **não consta** nas dependências nem no `package-lock.json`. Rode `npx expo install expo-clipboard` e faça commit do `package.json` e do lock atualizados, senão o app quebra ao abrir essas telas em outra máquina |
-| 2 | `PULAR_LOGIN = true` | Chave de desenvolvimento; voltar para `false` antes da entrega |
-| 3 | Duplicação | `DOT` (cor da bolinha por status) está repetido nas duas telas de detalhes; candidato a virar constante compartilhada ou parte do `StatusBadge` |
-| 4 | Tabelas de texto por status | O mapa de títulos/subtítulos é montado dentro do componente do cliente e fora dele no do prestador |
+| 1 | Sem pagamento | A tela `pagamento` e a `confirmacao` dependem da decisão sobre o Mercado Pago; o agendamento é criado `PENDENTE` sem pagar |
+| 2 | Horários fixos | Três períodos por dia (08h–12h, 13h–17h e 17h–20h), como no Figma; o prestador ainda não define horários próprios |
+| 3 | Conclusão a qualquer momento | O prestador pode marcar como concluído mesmo antes da data, para facilitar a demonstração |
+| 4 | Recusa sem motivo na tela | O backend aceita um motivo opcional na recusa, mas o app ainda não pede |
+| 5 | Sem notificações | O outro lado só vê a mudança ao abrir ou voltar para a tela (a lista recarrega ao ganhar foco) |
+| 6 | Catálogo de serviços simulado | As categorias ainda vêm de `src/utils/mocks.ts`; os profissionais já são reais, filtrados pelo "serviço principal" |
 
 ---
 
-## 11. Integração com o backend (proposta)
+## 11. Integração com o backend
 
-> Proposta do front-end, no mesmo espírito do `docs/API.md`: o backend deve confirmar ou ajustar. Se algo
-> mudar, atualize este arquivo, o `docs/API.md` e os tipos do app.
+Base `{HOST}/api/v1`, mesmas convenções do `docs/API.md`. O perfil (`CLIENTE` ou `PRESTADOR`) vem do token e
+cada usuário só vê os próprios agendamentos.
 
-Convenções herdadas do `docs/API.md`: base `{HOST}/api/v1`, JSON em `camelCase` e em português, header
-`Authorization: Bearer <accessToken>`, IDs como string e corpo de erro padrão
-(`codigo`, `mensagem`, `campos`). O perfil (`CLIENTE` ou `PRESTADOR`) vem do token; o backend deve devolver
-**apenas** os agendamentos do usuário logado.
-
-### 11.1 Endpoints sugeridos
+### 11.1 Endpoints
 
 | Método | Rota | Perfil | Uso no app |
 |---|---|---|---|
-| GET | `/agendamentos?status=` | Ambos | Listas do cliente e do prestador |
+| POST | `/agendamentos` | Cliente | Solicitar (`{ prestadorId, inicio, fim, observacoes? }`) |
+| GET | `/agendamentos?status=` | Ambos | Listas do cliente e do prestador (status opcional) |
 | GET | `/agendamentos/{id}` | Ambos | Telas de detalhes |
-| GET | `/prestador/agenda?de=&ate=` | Prestador | Calendário e compromissos do dia (datas `YYYY-MM-DD`) |
-| POST | `/agendamentos/{id}/cancelar` | Cliente | Cancelamento com motivo |
-| POST | `/agendamentos/{id}/avaliacao` | Cliente | Avaliação do serviço |
+| POST | `/agendamentos/{id}/cancelar` | Cliente | `{ motivo }`, um dos `MOTIVOS_CANCELAMENTO` |
 | POST | `/agendamentos/{id}/aceitar` | Prestador | Aceitar solicitação |
-| POST | `/agendamentos/{id}/recusar` | Prestador | Recusar solicitação (motivo opcional) |
+| POST | `/agendamentos/{id}/recusar` | Prestador | `{ motivo? }` |
 | POST | `/agendamentos/{id}/concluir` | Prestador | Marcar como concluído |
+| POST | `/agendamentos/{id}/avaliacao` | Cliente | `{ nota, destaques, comentario }` |
+| GET | `/prestadores?servico=` | Ambos (logado) | Lista de profissionais (só os "Online") |
+| GET | `/prestadores/{id}` | Ambos (logado) | Perfil público do profissional (nota, avaliações por nota, serviços realizados) |
+| GET | `/prestadores/{id}/horarios-ocupados?de=&ate=` | Ambos (logado) | Horários já pedidos ou confirmados (datas `YYYY-MM-DD`, até 62 dias) |
+| GET | `/prestadores/{id}/avaliacoes` | Ambos (logado) | Todas as avaliações (primeiro nome de quem avaliou) |
 
-**Exemplo — `GET /agendamentos/{id}` (`200 OK`)**
+O calendário do prestador filtra a lista de `GET /agendamentos` no app; não há rota `/prestador/agenda`.
+
+**Exemplo — resposta de `GET /agendamentos/{id}`**
 
 ```json
 {
-  "id": "ag-1",
+  "id": "3b4e0b69-09b8-45a3-942b-874a46fba7d7",
   "status": "CONFIRMADO",
-  "servico": "Manutenção de Jardim",
-  "valor": 160.0,
+  "servico": "Jardineiro",
+  "valor": 130.0,
   "inicio": "2026-05-15T13:00:00-03:00",
   "fim": "2026-05-15T17:00:00-03:00",
-  "prestador": { "id": "…", "nome": "Francisco Oliveira", "nota": 4.9, "avaliacoes": 82, "telefone": "11987654321" },
-  "cliente":   { "id": "…", "nome": "Mariana Oliveira", "desde": "2023", "telefone": "11976543210" },
+  "prestador": { "id": "…", "nome": "Francisco Oliveira", "telefone": "11987654321", "fotoUrl": null, "nota": 4.9, "avaliacoes": 82 },
+  "cliente":   { "id": "…", "nome": "Mariana Oliveira", "telefone": "11976543210", "fotoUrl": null, "desde": 2023 },
   "endereco": {
     "cep": "04000000", "logradouro": "Rua das Flores", "numero": "123",
-    "complemento": "Apt 42", "bairro": "Vila Mariana", "cidade": "São Paulo", "uf": "SP", "regiao": "Zona Sul"
+    "complemento": "Apt 42", "bairro": "Vila Mariana", "cidade": "São Paulo", "uf": "SP"
   },
   "observacoes": "Portão azul, tocar o interfone do apartamento 42.",
   "motivoCancelamento": null,
-  "avaliacao": null
+  "avaliacao": null,
+  "criadoEm": "2026-05-10T09:12:00-03:00"
 }
 ```
 
-**Exemplo — `POST /agendamentos/{id}/cancelar`**
+- `servico` é o serviço principal do prestador e `valor` é calculado pelo backend: o preço do prestador (por dia
+  ou por serviço) ou preço × horas (por hora). `null` quando o prestador não definiu preço ("A combinar").
+- `endereco` é uma cópia do endereço do cliente no momento da solicitação. No app, a "região" é o bairro.
+- `nota` do prestador é a média das avaliações recebidas (`null` sem avaliações).
+- O app converte essa resposta para o modelo das telas em `deApi` (`src/data/agendamentos.ts`, padrão Adapter).
 
-```json
-{ "motivo": "Mudança de planos" }
-```
+### 11.2 Regras garantidas pelo backend
 
-**Exemplo — `POST /agendamentos/{id}/avaliacao`**
+- **Transições** do ciclo de vida (seção 3); qualquer outra é recusada com `409 TRANSICAO_INVALIDA`.
+- **Autorização:** quem não participa do agendamento recebe `404`; a outra parte tentando uma ação que não é dela
+  recebe `403 ACESSO_NEGADO` (ex.: prestador cancelando, cliente aceitando).
+- **Solicitação:** só clientes; o prestador precisa estar "Online"; o horário precisa ser futuro, ter até 12 horas
+  e cair num dia de atendimento do prestador; não pode sobrepor um compromisso **confirmado**.
+- **Aceite:** recusado se o prestador já tiver outro compromisso confirmado sobreposto.
+- **Avaliação:** só em `CONCLUIDO`, `nota` de 1 a 5, `destaques` da lista `DESTAQUES_AVALIACAO`, `comentario` até
+  300 caracteres, uma única vez.
 
-```json
-{ "nota": 5, "destaques": ["Pontualidade", "Gentileza"], "comentario": "Ótimo trabalho!" }
-```
-
-### 11.2 Regras que o backend deve garantir
-
-- **Transições válidas** (seção 3): qualquer outra deve ser recusada com `409 TRANSICAO_INVALIDA`.
-- **Autorização:** cliente só mexe nos próprios agendamentos e prestador só nos atribuídos a ele (`403`/`404`).
-- **Cancelamento:** `motivo` obrigatório, vindo de `MOTIVOS_CANCELAMENTO`; só em `PENDENTE` ou `CONFIRMADO`.
-- **Avaliação:** só em `CONCLUIDO`; `nota` de 1 a 5; `comentario` até 300 caracteres; **uma única** avaliação
-  por agendamento (`409 AVALIACAO_JA_ENVIADA`). O backend também deve atualizar `nota` e `avaliacoes` do prestador.
-- **Conflito de horário:** impedir que o prestador aceite dois agendamentos sobrepostos.
-- **Datas:** trafegar `inicio` e `fim` em ISO 8601. O app deriva `dia`, `dataCurta`, `dataLonga`, `periodo`,
-  `horarioInicio` e `horario` a partir deles.
-- **Telefone:** somente dígitos (o app aplica a máscara), como no restante da API.
-
-### 11.3 Códigos de erro novos
+### 11.3 Códigos de erro
 
 | HTTP | `codigo` | Quando |
 |---|---|---|
-| 403 | `ACESSO_NEGADO` | O agendamento não pertence ao usuário |
-| 404 | `AGENDAMENTO_NAO_ENCONTRADO` | Id inexistente |
+| 400 | `PERIODO_INVALIDO` | Fim antes do início, mais de 12 horas ou consulta de horários com mais de 62 dias |
+| 400 | `DATA_NO_PASSADO` | Início no passado |
+| 400 | `DIA_INDISPONIVEL` | O prestador não atende nesse dia da semana |
+| 400 | `MOTIVO_INVALIDO` | Motivo de cancelamento fora da lista |
+| 400 | `DESTAQUE_INVALIDO` | Destaque da avaliação fora da lista |
+| 403 | `ACESSO_NEGADO` | A ação não é do perfil do usuário |
+| 404 | `AGENDAMENTO_NAO_ENCONTRADO` | Id inexistente ou de outra pessoa |
+| 404 | `PRESTADOR_NAO_ENCONTRADO` | Prestador inexistente |
 | 409 | `TRANSICAO_INVALIDA` | Mudança de status não permitida |
 | 409 | `AVALIACAO_JA_ENVIADA` | Agendamento já avaliado |
-| 409 | `CONFLITO_DE_HORARIO` | Prestador já tem compromisso no período |
-
-### 11.4 Como migrar o app
-
-1. Criar `src/types/agendamento.ts` e `src/services/agendamentos.ts` (usando `request` de `src/services/api.ts`),
-   seguindo o padrão de `src/services/auth.ts`, inclusive o modo simulado (`EXPO_PUBLIC_USE_MOCK`).
-2. Trocar o corpo das funções de `src/data/agendamentos.ts` pelas chamadas HTTP. Elas passam a ser
-   **assíncronas**: `useAgendamentos` e `useAgendamento` devem tratar `loading` e erro, e as telas de cancelar,
-   avaliar e solicitações devem aguardar (`await`) a resposta antes de navegar e exibir o erro retornado
-   (`ApiError.mensagem`).
-3. Substituir as constantes de calendário (`MES`, `HOJE`, `SEMANA`) por cálculo com a data real e buscar
-   `/prestador/agenda` pelo intervalo visível.
-4. Implementar "Ver rota no mapa" (por exemplo, abrindo o endereço no app de mapas com `Linking`).
-5. Atualizar `docs/API.md` (tabela de endpoints e códigos de erro) com o que for aprovado.
+| 409 | `CONFLITO_DE_HORARIO` | Prestador já tem compromisso confirmado no período |
+| 409 | `PRESTADOR_INDISPONIVEL` | Prestador "Offline" |
 
 ---
 
@@ -504,6 +477,7 @@ Convenções herdadas do `docs/API.md`: base `{HOST}/api/v1`, JSON em `camelCase
 nesha-main/
 ├── app/
 │   └── (app)/
+│       ├── agendar/[prestadorId].tsx        # Cliente: escolher dia e horário
 │       ├── agenda.tsx                       # Cliente: Minha Agenda
 │       ├── agendamento/[id].tsx             # Cliente: detalhes
 │       ├── cancelar/[id].tsx                # Cliente: cancelamento
@@ -514,8 +488,11 @@ nesha-main/
 │           └── agendamento/[id].tsx         # Prestador: detalhes
 ├── src/
 │   ├── data/
-│   │   ├── agendamentos.ts                  # Tipos, mocks, regras e formatadores
+│   │   ├── agendamentos.ts                  # Loja (Observer), adaptador da API (Adapter) e transições
+│   │   ├── estadosAgendamento.ts            # Padrão State
 │   │   └── useAgendamentos.ts               # Hooks com recarga ao ganhar foco
+│   ├── services/agendamentos.ts             # Chamadas HTTP e modo simulado
+│   ├── types/agendamento.ts                 # Tipos do contrato
 │   ├── components/
 │   │   ├── BottomNav.tsx
 │   │   ├── FilterChips.tsx

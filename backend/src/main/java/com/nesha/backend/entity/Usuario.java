@@ -58,6 +58,10 @@ public class Usuario {
     @Embedded
     private Endereco endereco;
 
+    @Column(name = "criado_em", nullable = false, updatable = false)
+    @Builder.Default
+    private Instant criadoEm = Instant.now();
+
     // Muda a cada foto enviada; versiona a URL da foto para o app não usar uma imagem antiga do cache.
     @Column(name = "foto_atualizada_em")
     private Instant fotoAtualizadaEm;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,12 @@ import {
   StatusAgendamento,
 } from '../../../src/data/agendamentos';
 import { estadoDe } from '../../../src/data/estadosAgendamento';
-import { useAgendamento } from '../../../src/data/useAgendamentos';
+import {
+  useAgendamento,
+  useRecarregarAoFocar,
+  useSituacaoAgendamentos,
+} from '../../../src/data/useAgendamentos';
+import { textoAvaliacoes } from '../../../src/data/usePrestador';
 import { colors } from '../../../src/theme/colors';
 
 const DOT: Record<StatusAgendamento, string> = {
@@ -29,13 +34,19 @@ export default function DetalhesAgendamentoCliente() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const item = useAgendamento(id);
+  const { carregado } = useSituacaoAgendamentos();
+  useRecarregarAoFocar();
   const [copiado, setCopiado] = useState(false);
 
   if (!item) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <ScreenHeader title="Detalhes do Agendamento" />
-        <Text style={styles.empty}>Agendamento não encontrado.</Text>
+        {carregado ? (
+          <Text style={styles.empty}>Agendamento não encontrado.</Text>
+        ) : (
+          <ActivityIndicator style={styles.loading} color={colors.primary} />
+        )}
       </SafeAreaView>
     );
   }
@@ -43,7 +54,7 @@ export default function DetalhesAgendamentoCliente() {
   const nome = primeiroNome(item.prestador.nome);
 
   const titulo: Record<StatusAgendamento, [string, string]> = {
-    CONFIRMADO: ['Agendamento Confirmado', `O jardineiro ${nome} confirmou o horário.`],
+    CONFIRMADO: ['Agendamento Confirmado', `${nome} confirmou o horário.`],
     PENDENTE: ['Aguardando confirmação', `Esperando ${nome} confirmar o horário.`],
     CONCLUIDO: ['Serviço Concluído', `${nome} finalizou o serviço.`],
     CANCELADO: ['Agendamento Cancelado', item.motivoCancelamento ?? 'Este serviço foi cancelado.'],
@@ -71,14 +82,15 @@ export default function DetalhesAgendamentoCliente() {
         </Card>
 
         <Card style={styles.person}>
-          <Avatar nome={item.prestador.nome} size={44} />
+          <Avatar nome={item.prestador.nome} size={44} uri={item.prestador.fotoUrl} />
           <View>
             <Text style={styles.name}>{item.prestador.nome}</Text>
             <View style={styles.rating}>
               <Ionicons name="star" size={13} color={colors.star} />
               <Text style={styles.ratingText}>
-                {item.prestador.nota.toFixed(1).replace('.', ',')} (
-                {item.prestador.avaliacoes} avaliações)
+                {item.prestador.nota == null
+                  ? 'Ainda sem avaliações'
+                  : `${item.prestador.nota.toFixed(1).replace('.', ',')} (${textoAvaliacoes(item.prestador.avaliacoes)})`}
               </Text>
             </View>
           </View>
@@ -146,6 +158,9 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 4,
     gap: 12,
+  },
+  loading: {
+    marginTop: 32,
   },
   empty: {
     textAlign: 'center',
