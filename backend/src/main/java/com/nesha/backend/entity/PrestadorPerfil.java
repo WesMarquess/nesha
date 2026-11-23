@@ -16,7 +16,6 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -67,9 +66,6 @@ public class PrestadorPerfil {
     @Column(nullable = false)
     @Builder.Default
     private boolean online = true;
-
-    @Column(name = "foto_atualizada_em")
-    private Instant fotoAtualizadaEm;
 
     @ElementCollection
     @CollectionTable(name = "prestador_especialidade", joinColumns = @JoinColumn(name = "prestador_id"))

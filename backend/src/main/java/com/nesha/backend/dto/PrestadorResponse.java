@@ -33,20 +33,10 @@ public record PrestadorResponse(
                 perfil.getUnidadePreco(),
                 perfil.getTempoResposta(),
                 perfil.isOnline(),
-                urlDaFoto(perfil),
+                perfil.getUsuario().urlDaFoto(),
                 perfil.getEspecialidades(),
                 perfil.getDiasAtendimento(),
                 descreverDisponibilidade(perfil.getDiasAtendimento()));
-    }
-
-    // Caminho relativo à base da API (/api/v1). O "v" muda a cada envio, para o app
-    // não reaproveitar uma foto antiga do cache.
-    private static String urlDaFoto(PrestadorPerfil perfil) {
-        if (perfil.getFotoAtualizadaEm() == null) {
-            return null;
-        }
-        return "/prestadores/%s/foto?v=%d"
-                .formatted(perfil.getUsuario().getId(), perfil.getFotoAtualizadaEm().toEpochMilli());
     }
 
     // Deriva um texto legível (ex.: "Seg a Sáb") a partir dos dias de atendimento, em vez de

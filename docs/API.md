@@ -27,8 +27,11 @@
 | GET | `/usuarios/me` | Bearer | Restaurar sessão ao abrir o app (os dois perfis) |
 | GET | `/prestadores/me` | Bearer | Perfil completo do prestador logado (`meu-perfil-prestador`) |
 | PUT | `/prestadores/me` | Bearer | Editar perfil, preço e status Online do prestador |
-| PUT | `/prestadores/me/foto` | Bearer | Alterar foto de perfil do prestador (multipart) |
-| GET | `/prestadores/{usuarioId}/foto` | Público | Exibir a foto do prestador |
+| GET | `/clientes/me` | Bearer | Dados do cliente logado (`configuracoes-cliente`) |
+| PUT | `/clientes/me` | Bearer | Editar contato e endereço do cliente |
+| PUT | `/usuarios/me/senha` | Bearer | Alterar senha (os dois perfis) |
+| PUT | `/usuarios/me/foto` | Bearer | Alterar foto de perfil (os dois perfis, multipart) |
+| GET | `/usuarios/{usuarioId}/foto` | Público | Exibir a foto de um usuário |
 | POST | `/auth/forgot-password` | Público | Previsto (tela ainda não existe) |
 | POST | `/auth/refresh` | Público | Previsto, opcional |
 
@@ -236,7 +239,7 @@ precisam dos dados básicos (`id`, `nome`, `email`, `perfil`), use `GET /usuario
   "unidadePreco": "DIA",
   "tempoResposta": "Menos de 1 hora",
   "online": true,
-  "fotoUrl": "/prestadores/b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f2222/foto?v=1795000000000",
+  "fotoUrl": "/usuarios/b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f2222/foto?v=1795000000000",
   "especialidades": ["Poda de árvores e arbustos", "Roçagem e limpeza de terreno"],
   "diasAtendimento": [1, 2, 3, 4, 5, 6],
   "disponibilidade": "Seg a Sáb"
@@ -298,23 +301,99 @@ endereço, especialidades e dias de atendimento não são alterados por esta rot
 **Erros:** `400 VALIDACAO` (com `campos`), `401` como nas demais rotas protegidas e
 `404 PRESTADOR_NAO_ENCONTRADO` para token de cliente.
 
-### 3.4.2 `PUT /prestadores/me/foto`
+### 3.4.2 `GET /clientes/me`
 
-Envia a foto de perfil do prestador logado. Corpo `multipart/form-data` com o arquivo no campo
-`foto`. Aceita JPG, PNG ou WebP de até 5 MB; o tipo é conferido pelo conteúdo do arquivo, não pelo
-nome ou pelo `Content-Type` informado.
+Dados do cliente logado, para a tela de configurações. Token de prestador recebe
+`404 CLIENTE_NAO_ENCONTRADO`.
 
-**Resposta `200 OK`:** o perfil atualizado, com o novo `fotoUrl`.
+**Header:** `Authorization: Bearer <accessToken>`
+
+```json
+{
+  "usuario": {
+    "id": "b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f1111",
+    "nome": "Maria Silva",
+    "email": "maria@example.com",
+    "perfil": "CLIENTE"
+  },
+  "telefone": "11987654321",
+  "endereco": {
+    "cep": "01310100",
+    "logradouro": "Avenida Paulista",
+    "numero": "1000",
+    "complemento": null,
+    "bairro": "Bela Vista",
+    "cidade": "São Paulo",
+    "uf": "SP"
+  },
+  "fotoUrl": null
+}
+```
+
+### 3.4.3 `PUT /clientes/me`
+
+Atualiza nome, telefone e endereço do cliente logado (tela `configuracoes-cliente`). O app envia
+todos os campos; e-mail e CPF não são editáveis. Mesmas regras de validação do cadastro (seção 5).
+
+```json
+{
+  "nome": "Maria Silva",
+  "telefone": "11987654321",
+  "endereco": {
+    "cep": "01310100",
+    "logradouro": "Avenida Paulista",
+    "numero": "1000",
+    "complemento": "Apto 12",
+    "bairro": "Bela Vista",
+    "cidade": "São Paulo",
+    "uf": "SP"
+  }
+}
+```
+
+**Resposta `200 OK`:** os dados atualizados, no formato de `GET /clientes/me`.
+**Erros:** `400 VALIDACAO` (com `campos`, ex.: `endereco.cep`) e `404 CLIENTE_NAO_ENCONTRADO`.
+
+### 3.4.4 `PUT /usuarios/me/senha`
+
+Troca a senha do usuário logado (cliente ou prestador).
+
+```json
+{ "senhaAtual": "Senha@123", "novaSenha": "NovaSenha@456" }
+```
+
+**Resposta `204 No Content`.** O token atual continua válido até expirar.
+
+| HTTP | `codigo` | Quando |
+|---|---|---|
+| 400 | `VALIDACAO` | Nova senha fora das regras da seção 5 (detalhe em `campos.novaSenha`) |
+| 400 | `SENHA_ATUAL_INCORRETA` | `senhaAtual` não confere |
+| 400 | `SENHA_IGUAL_A_ATUAL` | A nova senha é igual à atual |
+
+### 3.4.5 `PUT /usuarios/me/foto`
+
+Envia a foto de perfil do usuário logado (cliente ou prestador). Corpo `multipart/form-data` com o
+arquivo no campo `foto`. Aceita JPG, PNG ou WebP de até 5 MB; o tipo é conferido pelo conteúdo do
+arquivo, não pelo nome nem pelo `Content-Type` informado.
+
+**Resposta `200 OK`**
+
+```json
+{ "fotoUrl": "/usuarios/b1f1c7a0-5d0c-4e0a-9d2e-0c8f6a9f1111/foto?v=1795000000000" }
+```
+
+O mesmo `fotoUrl` passa a vir em `GET /clientes/me` ou `GET /prestadores/me`.
 
 | HTTP | `codigo` | Quando |
 |---|---|---|
 | 400 | `FOTO_INVALIDA` | Campo `foto` ausente ou arquivo que não é JPG/PNG/WebP |
 | 413 | `FOTO_MUITO_GRANDE` | Arquivo com mais de 5 MB |
 
-### 3.4.3 `GET /prestadores/{usuarioId}/foto`
+### 3.4.6 `GET /usuarios/{usuarioId}/foto`
 
-**Público** (sem token), para a foto aparecer também para o cliente. Devolve os bytes da imagem com
-o `Content-Type` correspondente. `404 FOTO_NAO_ENCONTRADA` se o prestador não tiver foto.
+**Público** (sem token), para a foto aparecer para a outra parte (o cliente vê a do prestador e
+vice-versa). Devolve os bytes da imagem com o `Content-Type` correspondente.
+`404 FOTO_NAO_ENCONTRADA` se o usuário não tiver foto.
 
 ---
 
@@ -389,9 +468,9 @@ Toda resposta de erro (4xx/5xx) deve seguir este corpo:
 |---|---|
 | 400 | `VALIDACAO` |
 | 401 | `CREDENCIAIS_INVALIDAS`, `TOKEN_INVALIDO`, `TOKEN_EXPIRADO` |
-| 400 | `FOTO_INVALIDA` |
+| 400 | `FOTO_INVALIDA`, `SENHA_ATUAL_INCORRETA`, `SENHA_IGUAL_A_ATUAL` |
 | 403 | `PERFIL_INVALIDO` |
-| 404 | `PRESTADOR_NAO_ENCONTRADO`, `FOTO_NAO_ENCONTRADA` |
+| 404 | `PRESTADOR_NAO_ENCONTRADO`, `CLIENTE_NAO_ENCONTRADO`, `FOTO_NAO_ENCONTRADA` |
 | 409 | `EMAIL_JA_CADASTRADO`, `CPF_JA_CADASTRADO` |
 | 413 | `FOTO_MUITO_GRANDE` |
 | 500 | `ERRO_INTERNO` |
@@ -496,8 +575,8 @@ EXPO_PUBLIC_USE_MOCK=false
    `perfil-prestador` e `meu-perfil-prestador`. Configuração por categoria fica para uma tarefa futura,
    quando o grupo decidir o modelo (provavelmente uma tabela `prestador_categoria` com preço e agenda
    próprios).
-8. ~~**Foto de perfil do prestador:** upload próprio ou só URL?~~ **Resolvido:** upload pelo app
-   (seção 3.4.2), guardado no banco e servido publicamente (seção 3.4.3).
+8. ~~**Foto de perfil:** upload próprio ou só URL?~~ **Resolvido:** upload pelo app para os dois
+   perfis (seção 3.4.5), guardado no banco e servido publicamente (seção 3.4.6).
 9. **Login do prestador por CPF/CNPJ:** a tela `login-prestador` no Figma pede "CPF ou CNPJ" e senha,
    mas o app usa **e-mail** e senha, como o cliente, porque o `POST /auth/login` é o mesmo para os
    dois perfis. Trocar exigiria aceitar CPF no login do backend.

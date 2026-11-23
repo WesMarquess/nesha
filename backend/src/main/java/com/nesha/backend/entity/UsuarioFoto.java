@@ -10,17 +10,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// Bytes da foto de perfil em tabela própria, para não carregá-los a cada leitura do usuário.
 @Entity
-@Table(name = "prestador_foto")
+@Table(name = "usuario_foto")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class PrestadorFoto {
+public class UsuarioFoto {
 
     @Id
-    @Column(name = "prestador_id")
-    private UUID prestadorId;
+    @Column(name = "usuario_id")
+    private UUID usuarioId;
 
     @Column(nullable = false)
     private byte[] conteudo;

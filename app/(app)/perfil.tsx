@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Href, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -16,6 +16,7 @@ import { Card } from '../../src/components/Card';
 import { Notice } from '../../src/components/Notice';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useAgendamentos } from '../../src/data/useAgendamentos';
+import { getClienteMe, urlFoto } from '../../src/services/auth';
 import { colors } from '../../src/theme/colors';
 
 type MenuItemProps = {
@@ -65,6 +66,24 @@ export default function Perfil() {
 
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [saindo, setSaindo] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+
+  // Recarrega ao voltar das configurações, onde a foto pode ter mudado.
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      getClienteMe()
+        .then((dados) => {
+          if (ativo) setFotoUrl(dados.fotoUrl);
+        })
+        .catch(() => {
+          // Sem a foto, o avatar mostra as iniciais.
+        });
+      return () => {
+        ativo = false;
+      };
+    }, [])
+  );
 
   // Contagens só para exibição (não decidem nenhuma ação permitida).
   const proximos = agendamentos.filter((a) => a.status === 'CONFIRMADO').length;
@@ -89,7 +108,16 @@ export default function Perfil() {
 
         {/* Identificação */}
         <Card style={styles.identity}>
-          <Avatar nome={usuario?.nome ?? '?'} size={80} />
+          <TouchableOpacity
+            style={styles.config}
+            onPress={() => router.push('/configuracoes' as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Configurações do perfil"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons name="settings-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <Avatar nome={usuario?.nome ?? '?'} size={80} uri={urlFoto(fotoUrl)} />
           <Text style={styles.name}>{usuario?.nome ?? 'Usuário'}</Text>
           <Text style={styles.email}>{usuario?.email}</Text>
           <View style={styles.badge}>
@@ -180,6 +208,17 @@ const styles = StyleSheet.create({
   identity: {
     alignItems: 'center',
     paddingVertical: 24,
+  },
+  config: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   name: {
     fontSize: 20,
