@@ -6,10 +6,10 @@ Ao criar ou alterar uma funcionalidade que se encaixe em um dos problemas abaixo
 
 | Padrão | Categoria | Problema do Nesha | Onde está |
 |---|---|---|---|
-| [State](#state) | Comportamental | Ciclo de vida do agendamento | `src/data/estadosAgendamento.ts` |
+| [State](#state) | Comportamental | Ciclo de vida do agendamento | `src/data/estadosAgendamento.ts` e, no backend, `StatusAgendamento.java` |
 | [Strategy](#strategy) | Comportamental | Critérios de busca e, no futuro, formas de pagamento | `src/utils/ordenacaoProfissionais.ts` |
 | [Observer](#observer) | Comportamental | Avisar telas (e, no futuro, usuários) quando algo muda | `src/data/agendamentos.ts`, `src/contexts/AuthContext.tsx` |
-| [Adapter](#adapter) | Estrutural | Integrar APIs externas sem depender do formato delas | `src/services/viacep.ts` |
+| [Adapter](#adapter) | Estrutural | Integrar APIs externas sem depender do formato delas | `src/services/viacep.ts`, `deApi` em `src/data/agendamentos.ts` |
 
 ## State
 
@@ -22,6 +22,7 @@ Ao criar ou alterar uma funcionalidade que se encaixe em um dos problemas abaixo
 - As telas consultam o estado (`estadoDe(item).podeCancelar`). **Não compare `item.status === '...'` para decidir se uma ação é permitida.**
 - Toda mudança passa pelas funções de [`agendamentos.ts`](../src/data/agendamentos.ts) (`aceitarSolicitacao`, `cancelarAgendamento` etc.), que delegam ao estado atual.
 - Um novo status, como `EM_ANDAMENTO`, é um novo objeto de estado mais as transições que levam a ele. As telas não mudam.
+- O backend repete o ciclo no enum `StatusAgendamento.java` (cada constante sobrescreve as transições que permite; as demais respondem `409 TRANSICAO_INVALIDA`). O app valida antes de chamar a API, e o backend confirma.
 
 Comparar status para escolher **texto ou cor** (como em `StatusBadge`) continua permitido: isso é apresentação, não regra de negócio.
 
@@ -54,4 +55,5 @@ Comparar status para escolher **texto ou cor** (como em `StatusBadge`) continua 
 
 - Cada integração externa fica em `src/services/` e converte a resposta para um tipo do Nesha. Veja [`viacep.ts`](../src/services/viacep.ts): `buscarCep` devolve `Endereco` (`cidade`, não `localidade`) e transforma `{ erro: true }` em `CepNotFoundError`.
 - As telas importam apenas os tipos do Nesha, nunca os tipos do provedor.
+- O mesmo vale para o nosso backend: `deApi` (em [`agendamentos.ts`](../src/data/agendamentos.ts)) converte a resposta de `/agendamentos` (datas ISO, endereço em partes) no modelo que as telas exibem.
 - **Mercado Pago (planejado):** criar um adaptador que converta o status de pagamento do provedor para um tipo interno (por exemplo, `'APROVADO' | 'PENDENTE' | 'RECUSADO'`). Ele seria usado pelas estratégias de pagamento do Strategy acima.

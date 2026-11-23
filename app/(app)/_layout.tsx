@@ -96,6 +96,7 @@ export default function AppLayout() {
       <Tabs.Screen name="agendamento/[id]" options={{ href: null }} />
       <Tabs.Screen name="cancelar/[id]" options={{ href: null }} />
       <Tabs.Screen name="avaliar/[id]" options={{ href: null }} />
+      <Tabs.Screen name="agendar/[prestadorId]" options={{ href: null }} />
       <Tabs.Screen name="configuracoes" options={{ href: null, ...semBarraDoTabs }} />
       <Tabs.Screen name="alterar-senha" options={{ href: null }} />
 

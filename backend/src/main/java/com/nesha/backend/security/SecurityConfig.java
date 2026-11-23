@@ -44,7 +44,10 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/clientes", "/api/v1/prestadores", "/h2-console/**")
+                        .requestMatchers("/api/v1/auth/**", "/h2-console/**")
+                        .permitAll()
+                        // Só o cadastro é público; a lista de prestadores (GET) exige login.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/clientes", "/api/v1/prestadores")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/usuarios/*/foto")
                         .permitAll()

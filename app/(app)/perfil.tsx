@@ -15,7 +15,7 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Notice } from '../../src/components/Notice';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { useAgendamentos } from '../../src/data/useAgendamentos';
+import { useAgendamentos, useRecarregarAoFocar } from '../../src/data/useAgendamentos';
 import { getClienteMe, urlFoto } from '../../src/services/auth';
 import { colors } from '../../src/theme/colors';
 
@@ -63,6 +63,7 @@ export default function Perfil() {
   const router = useRouter();
   const { usuario, signOut } = useAuth();
   const agendamentos = useAgendamentos();
+  useRecarregarAoFocar();
 
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [saindo, setSaindo] = useState(false);

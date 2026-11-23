@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,10 +17,12 @@ import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import {
   cancelarAgendamento,
   formatarValor,
+  mensagemDeErro,
   MOTIVOS_CANCELAMENTO,
 } from '../../../src/data/agendamentos';
 import { useAgendamento } from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
+import { deixarAviso } from '../../../src/utils/avisoPendente';
 
 export default function CancelarServico() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +31,9 @@ export default function CancelarServico() {
 
   const [motivo, setMotivo] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
 
   if (!item) {
     return (
@@ -40,23 +44,29 @@ export default function CancelarServico() {
     );
   }
 
-  function confirmar() {
+  function pedirConfirmacao() {
     if (!motivo) {
-      Alert.alert('Selecione um motivo', 'Informe o motivo do cancelamento.');
+      setErro('Selecione o motivo do cancelamento.');
       return;
     }
+    setErro('');
+    setConfirmando(true);
+  }
 
-    Alert.alert('Cancelar serviço?', 'Essa ação não pode ser desfeita.', [
-      { text: 'Voltar', style: 'cancel' },
-      {
-        text: 'Confirmar',
-        style: 'destructive',
-        onPress: () => {
-          cancelarAgendamento(item!.id, motivo);
-          router.replace('/agenda' as Href);
-        },
-      },
-    ]);
+  async function confirmar() {
+    if (!motivo || enviando) return;
+    setEnviando(true);
+    setErro('');
+    try {
+      await cancelarAgendamento(item!.id, motivo);
+      deixarAviso('Agendamento cancelado.');
+      router.navigate({ pathname: '/agenda', params: { aba: 'CANCELADO' } } as Href);
+    } catch (error) {
+      setErro(mensagemDeErro(error));
+      setConfirmando(false);
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -67,7 +77,7 @@ export default function CancelarServico() {
         <Notice text="Caso opte por cancelar, nos informe o motivo para que possamos melhorar nossos serviços." />
 
         <Card style={styles.service}>
-          <Avatar nome={item.prestador.nome} size={36} />
+          <Avatar nome={item.prestador.nome} size={36} uri={item.prestador.fotoUrl} />
           <View>
             <Text style={styles.serviceName}>{item.servico}</Text>
             <Text style={styles.serviceSub}>
@@ -108,6 +118,7 @@ export default function CancelarServico() {
                   onPress={() => {
                     setMotivo(opcao);
                     setAberto(false);
+                    setErro('');
                   }}
                 >
                   <Text
@@ -133,12 +144,40 @@ export default function CancelarServico() {
             />
           </View>
 
-          <Button
-            title="Confirmar Cancelamento"
-            variant="danger"
-            style={styles.confirm}
-            onPress={confirmar}
-          />
+          {!!erro && <Text style={styles.erro}>{erro}</Text>}
+
+          {confirmando ? (
+            <View style={styles.confirmacao}>
+              <Notice
+                tone="error"
+                icon="alert-circle-outline"
+                text="Cancelar este serviço? Essa ação não pode ser desfeita."
+              />
+              <View style={styles.botoes}>
+                <Button
+                  title="Voltar"
+                  variant="outline"
+                  style={styles.flex}
+                  disabled={enviando}
+                  onPress={() => setConfirmando(false)}
+                />
+                <Button
+                  title="Confirmar"
+                  variant="danger"
+                  style={styles.flex}
+                  loading={enviando}
+                  onPress={confirmar}
+                />
+              </View>
+            </View>
+          ) : (
+            <Button
+              title="Confirmar Cancelamento"
+              variant="danger"
+              style={styles.confirm}
+              onPress={pedirConfirmacao}
+            />
+          )}
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -146,6 +185,22 @@ export default function CancelarServico() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  erro: {
+    fontSize: 13,
+    color: colors.error,
+    marginTop: 12,
+  },
+  confirmacao: {
+    gap: 12,
+    marginTop: 16,
+  },
+  botoes: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

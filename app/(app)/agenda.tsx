@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Href, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Href, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../src/components/Avatar';
 import { BottomNav } from '../../src/components/BottomNav';
@@ -14,9 +14,15 @@ import {
   formatarValor,
   primeiroNome,
   StatusAgendamento,
+  textoPeriodo,
 } from '../../src/data/agendamentos';
-import { useAgendamentos } from '../../src/data/useAgendamentos';
+import {
+  useAgendamentos,
+  useRecarregarAoFocar,
+  useSituacaoAgendamentos,
+} from '../../src/data/useAgendamentos';
 import { colors } from '../../src/theme/colors';
+import { pegarAviso } from '../../src/utils/avisoPendente';
 
 const ABAS: readonly { key: StatusAgendamento; label: string }[] = [
   { key: 'CONFIRMADO', label: 'Próximos' },
@@ -28,7 +34,21 @@ const ABAS: readonly { key: StatusAgendamento; label: string }[] = [
 export default function AgendaCliente() {
   const router = useRouter();
   const agendamentos = useAgendamentos();
-  const [aba, setAba] = useState<StatusAgendamento>('CONFIRMADO');
+  const { carregando, carregado, erro } = useSituacaoAgendamentos();
+  useRecarregarAoFocar();
+
+  // ?aba=PENDENTE abre direto numa aba (ex.: depois de solicitar um agendamento).
+  const params = useLocalSearchParams<{ aba?: StatusAgendamento }>();
+  const [aba, setAba] = useState<StatusAgendamento>(params.aba ?? 'CONFIRMADO');
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  // A tela continua montada entre as abas: aplica a aba pedida e o aviso ao voltar ao foco.
+  useFocusEffect(
+    useCallback(() => {
+      if (params.aba) setAba(params.aba);
+      setAviso(pegarAviso());
+    }, [params.aba])
+  );
 
   const lista = agendamentos.filter((a) => a.status === aba);
 
@@ -39,8 +59,13 @@ export default function AgendaCliente() {
       <FilterChips options={ABAS} value={aba} onChange={setAba} />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {lista.length === 0 && (
-          <Text style={styles.empty}>Nenhum agendamento por aqui.</Text>
+        {!!aviso && <Notice tone="success" icon="checkmark-circle-outline" text={aviso} />}
+        {!!erro && <Notice tone="error" icon="alert-circle-outline" text={erro} />}
+
+        {carregando && !carregado ? (
+          <ActivityIndicator color={colors.primary} accessibilityLabel="Carregando agenda" />
+        ) : (
+          lista.length === 0 && <Text style={styles.empty}>Nenhum agendamento por aqui.</Text>
         )}
 
         {lista.map((item) => (
@@ -54,7 +79,7 @@ export default function AgendaCliente() {
               </View>
 
               <View style={styles.person}>
-                <Avatar nome={item.prestador.nome} size={40} />
+                <Avatar nome={item.prestador.nome} size={40} uri={item.prestador.fotoUrl} />
                 <View style={styles.personText}>
                   <Text style={styles.name}>{item.prestador.nome}</Text>
                   <Text style={styles.service}>{item.servico}</Text>
@@ -65,7 +90,7 @@ export default function AgendaCliente() {
 
               <IconLine
                 icon="calendar-outline"
-                text={`${item.dataCurta} • Período da ${item.periodo}`}
+                text={`${item.dataCurta} • ${textoPeriodo(item.periodo)}`}
               />
               <IconLine
                 icon="location-outline"

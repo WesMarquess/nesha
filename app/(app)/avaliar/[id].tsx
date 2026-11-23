@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,9 +19,11 @@ import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import {
   avaliarAgendamento,
   DESTAQUES_AVALIACAO,
+  mensagemDeErro,
 } from '../../../src/data/agendamentos';
 import { useAgendamento } from '../../../src/data/useAgendamentos';
 import { colors } from '../../../src/theme/colors';
+import { deixarAviso } from '../../../src/utils/avisoPendente';
 
 const ROTULOS: Record<number, string> = {
   1: 'Péssimo',
@@ -40,6 +41,8 @@ export default function AvaliarServico() {
   const [nota, setNota] = useState(5);
   const [destaques, setDestaques] = useState<string[]>([]);
   const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
 
   if (!item) {
     return (
@@ -58,15 +61,23 @@ export default function AvaliarServico() {
     );
   }
 
-  function enviar() {
-    avaliarAgendamento(item!.id, {
-      nota,
-      destaques,
-      comentario: comentario.trim(),
-    });
-    Alert.alert('Obrigado!', 'Sua avaliação foi enviada.', [
-      { text: 'OK', onPress: () => router.replace('/agenda' as Href) },
-    ]);
+  async function enviar() {
+    if (enviando) return;
+    setEnviando(true);
+    setErro('');
+    try {
+      await avaliarAgendamento(item!.id, {
+        nota,
+        destaques,
+        comentario: comentario.trim(),
+      });
+      deixarAviso('Obrigado! Sua avaliação foi enviada.');
+      router.navigate({ pathname: '/agenda', params: { aba: 'CONCLUIDO' } } as Href);
+    } catch (error) {
+      setErro(mensagemDeErro(error));
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -82,7 +93,7 @@ export default function AvaliarServico() {
           keyboardShouldPersistTaps="handled"
         >
           <Card style={styles.center}>
-            <Avatar nome={item.prestador.nome} size={64} />
+            <Avatar nome={item.prestador.nome} size={64} uri={item.prestador.fotoUrl} />
             <Text style={styles.name}>{item.prestador.nome}</Text>
             <Text style={styles.sub}>
               {item.servico} realizada em {item.dataCurta}
@@ -153,7 +164,9 @@ export default function AvaliarServico() {
             />
           </Card>
 
-          <Button title="Enviar Avaliação" onPress={enviar} />
+          {!!erro && <Text style={styles.erro}>{erro}</Text>}
+
+          <Button title="Enviar Avaliação" loading={enviando} onPress={enviar} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -161,6 +174,11 @@ export default function AvaliarServico() {
 }
 
 const styles = StyleSheet.create({
+  erro: {
+    fontSize: 13,
+    color: colors.error,
+    textAlign: 'center',
+  },
   flex: {
     flex: 1,
   },

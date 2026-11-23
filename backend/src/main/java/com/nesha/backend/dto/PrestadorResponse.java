@@ -42,7 +42,7 @@ public record PrestadorResponse(
     // Deriva um texto legível (ex.: "Seg a Sáb") a partir dos dias de atendimento, em vez de
     // persistir essa descrição junto com a lista de dias e correr o risco dos dois ficarem
     // desalinhados.
-    private static String descreverDisponibilidade(List<Integer> diasAtendimento) {
+    public static String descreverDisponibilidade(List<Integer> diasAtendimento) {
         if (diasAtendimento == null || diasAtendimento.isEmpty()) {
             return "";
         }
