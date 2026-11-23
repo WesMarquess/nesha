@@ -7,12 +7,14 @@ import java.util.List;
 
 public record PrestadorResponse(
         UsuarioResponse usuario,
+        String telefone,
         String servicoPrincipal,
         String areaAtendimento,
         String sobreMim,
         BigDecimal preco,
         UnidadePreco unidadePreco,
         String tempoResposta,
+        boolean online,
         String fotoUrl,
         List<String> especialidades,
         List<Integer> diasAtendimento,
@@ -23,16 +25,28 @@ public record PrestadorResponse(
     public static PrestadorResponse from(PrestadorPerfil perfil) {
         return new PrestadorResponse(
                 UsuarioResponse.from(perfil.getUsuario()),
+                perfil.getUsuario().getTelefone(),
                 perfil.getServicoPrincipal(),
                 perfil.getAreaAtendimento(),
                 perfil.getSobreMim(),
                 perfil.getPreco(),
                 perfil.getUnidadePreco(),
                 perfil.getTempoResposta(),
-                perfil.getFotoUrl(),
+                perfil.isOnline(),
+                urlDaFoto(perfil),
                 perfil.getEspecialidades(),
                 perfil.getDiasAtendimento(),
                 descreverDisponibilidade(perfil.getDiasAtendimento()));
+    }
+
+    // Caminho relativo à base da API (/api/v1). O "v" muda a cada envio, para o app
+    // não reaproveitar uma foto antiga do cache.
+    private static String urlDaFoto(PrestadorPerfil perfil) {
+        if (perfil.getFotoAtualizadaEm() == null) {
+            return null;
+        }
+        return "/prestadores/%s/foto?v=%d"
+                .formatted(perfil.getUsuario().getId(), perfil.getFotoAtualizadaEm().toEpochMilli());
     }
 
     // Deriva um texto legível (ex.: "Seg a Sáb") a partir dos dias de atendimento, em vez de

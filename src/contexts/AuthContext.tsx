@@ -10,12 +10,12 @@ import {
 import { ApiError, setAuthToken, setUnauthorizedHandler } from '../services/api';
 import { getMe, login } from '../services/auth';
 import { clearToken, loadToken, saveToken } from '../services/session';
-import type { Usuario } from '../types/auth';
+import type { Perfil, Usuario } from '../types/auth';
 
 type AuthContextValue = {
   usuario: Usuario | null;
   loading: boolean; // true enquanto restaura a sessão salva ao abrir o app
-  signIn: (email: string, senha: string) => Promise<void>;
+  signIn: (email: string, senha: string, perfil: Perfil) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -75,15 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, senha: string) => {
+  const signIn = useCallback(async (email: string, senha: string, perfil: Perfil) => {
     const resposta = await login({ email, senha });
 
-    // Este app é só da Área do Cliente.
-    if (resposta.usuario.perfil !== 'CLIENTE') {
+    // O login é o mesmo para os dois perfis, mas cada área só aceita o seu.
+    if (resposta.usuario.perfil !== perfil) {
       throw new ApiError(
         403,
         'PERFIL_INVALIDO',
-        'Esta conta não é de cliente. Use a Área do Prestador.'
+        perfil === 'CLIENTE'
+          ? 'Esta conta é de prestador. Use a Área do Prestador.'
+          : 'Esta conta é de cliente. Use a Área do Cliente.'
       );
     }
 

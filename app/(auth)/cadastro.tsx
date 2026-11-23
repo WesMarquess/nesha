@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -321,9 +320,7 @@ export default function Cadastro() {
 
     try {
       await register(buildRegisterPayload(values));
-      Alert.alert('Conta criada!', 'Agora é só entrar com seu e-mail e senha.', [
-        { text: 'Entrar', onPress: () => router.replace('/login') },
-      ]);
+      router.replace({ pathname: '/login', params: { cadastrado: '1' } });
     } catch (error) {
       handleApiError(error);
     } finally {

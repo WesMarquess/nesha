@@ -6,9 +6,13 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -34,6 +38,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleMalformedJson(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse("VALIDACAO", "Corpo da requisição inválido."));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleUploadMuitoGrande(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(new ApiErrorResponse("FOTO_MUITO_GRANDE", "A foto deve ter no máximo 5 MB."));
+    }
+
+    @ExceptionHandler({
+        MissingServletRequestPartException.class,
+        MultipartException.class,
+        HttpMediaTypeNotSupportedException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleUploadInvalido(Exception ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse("FOTO_INVALIDA", "Envie a imagem no campo \"foto\" (multipart/form-data)."));
     }
 
     @ExceptionHandler(Exception.class)

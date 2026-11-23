@@ -53,15 +53,18 @@ export async function request<T>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
+  // Upload (FormData): o fetch define o Content-Type com o boundary do multipart.
+  const multipart = body instanceof FormData;
+
   try {
     const response = await fetch(`${API_URL}${path}`, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        ...(multipart ? {} : { 'Content-Type': 'application/json' }),
         Accept: 'application/json',
         ...(auth && authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
       signal: controller.signal,
     });
 

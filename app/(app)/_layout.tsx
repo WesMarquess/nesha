@@ -1,21 +1,33 @@
 import React from 'react';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { PULAR_LOGIN } from '../../src/config/dev';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { colors } from '../../src/theme/colors';
+import { rotaInicial } from '../../src/utils/rotas';
+
+// Telas que já desenham a própria barra (BottomNav): a do Tabs fica escondida
+// para não aparecerem duas.
+const semBarraDoTabs = { tabBarStyle: { display: 'none' } } as const;
 
 // Telas protegidas. Sem sessão, volta para o login.
 export default function AppLayout() {
   const { usuario, loading } = useAuth();
+  const segments = useSegments();
 
   // Proteção mantida do código do seu colega
   if (loading) {
     return null;
   }
 
+  // Ao sair (ou sem sessão), cada área volta para o próprio login.
   if (!usuario && !PULAR_LOGIN) {
-    return <Redirect href="/login" />;
+    return <Redirect href={segments[1] === 'prestador' ? '/login-prestador' : '/login'} />;
+  }
+
+  // O prestador só usa as telas de prestador/ (o resto é da Área do Cliente).
+  if (usuario?.perfil === 'PRESTADOR' && segments[1] !== 'prestador') {
+    return <Redirect href={rotaInicial('PRESTADOR')} />;
   }
 
   // Substituição do Stack pelo Tabs para criar a barra inferior
@@ -56,6 +68,7 @@ export default function AppLayout() {
         options={{
           title: 'Agenda',
           tabBarIcon: ({ color }) => <Feather name="calendar" size={24} color={color} />,
+          ...semBarraDoTabs,
         }}
       />
 
@@ -65,6 +78,7 @@ export default function AppLayout() {
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color }) => <Feather name="user" size={24} color={color} />,
+          ...semBarraDoTabs,
         }}
       />
 
@@ -77,6 +91,12 @@ export default function AppLayout() {
       <Tabs.Screen name="lista-profissionais" options={{ href: null }} />
       <Tabs.Screen name="profissional" options={{ href: null }} />
       <Tabs.Screen name="avaliacoes" options={{ href: null }} />
+      <Tabs.Screen name="agendamento/[id]" options={{ href: null }} />
+      <Tabs.Screen name="cancelar/[id]" options={{ href: null }} />
+      <Tabs.Screen name="avaliar/[id]" options={{ href: null }} />
+
+      {/* Área do Prestador: navegação própria em prestador/_layout.tsx */}
+      <Tabs.Screen name="prestador" options={{ href: null, ...semBarraDoTabs }} />
     </Tabs>
   );
 }

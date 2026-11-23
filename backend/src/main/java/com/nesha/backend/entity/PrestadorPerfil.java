@@ -16,6 +16,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +54,7 @@ public class PrestadorPerfil {
     @Column(name = "sobre_mim", length = 2000)
     private String sobreMim;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal preco;
 
     @Enumerated(EnumType.STRING)
@@ -63,8 +64,12 @@ public class PrestadorPerfil {
     @Column(name = "tempo_resposta", length = 100)
     private String tempoResposta;
 
-    @Column(name = "foto_url", length = 500)
-    private String fotoUrl;
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean online = true;
+
+    @Column(name = "foto_atualizada_em")
+    private Instant fotoAtualizadaEm;
 
     @ElementCollection
     @CollectionTable(name = "prestador_especialidade", joinColumns = @JoinColumn(name = "prestador_id"))

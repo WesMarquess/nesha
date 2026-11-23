@@ -105,7 +105,7 @@ export default function NovasSolicitacoes() {
         ))}
       </ScrollView>
 
-      <BottomNav active="agenda" agendaHref="/prestador/agenda" />
+      <BottomNav active="agenda" area="prestador" />
     </SafeAreaView>
   );
 }
