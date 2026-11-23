@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,4 +57,16 @@ public class Usuario {
 
     @Embedded
     private Endereco endereco;
+
+    // Muda a cada foto enviada; versiona a URL da foto para o app não usar uma imagem antiga do cache.
+    @Column(name = "foto_atualizada_em")
+    private Instant fotoAtualizadaEm;
+
+    // Caminho relativo à base da API (/api/v1), ou null se não houver foto.
+    public String urlDaFoto() {
+        if (fotoAtualizadaEm == null) {
+            return null;
+        }
+        return "/usuarios/%s/foto?v=%d".formatted(id, fotoAtualizadaEm.toEpochMilli());
+    }
 }

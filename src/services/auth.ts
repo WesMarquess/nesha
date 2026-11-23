@@ -1,6 +1,9 @@
 import { API_URL, USE_MOCK } from '../config/env';
 import type {
+  AlterarSenhaRequest,
+  AtualizarClienteRequest,
   AtualizarPrestadorRequest,
+  ClientePerfil,
   CadastroPrestadorRequest,
   LoginRequest,
   LoginResponse,
@@ -95,7 +98,8 @@ export type FotoEscolhida = {
   file?: Blob;
 };
 
-export async function enviarFotoPrestador(foto: FotoEscolhida): Promise<PrestadorPerfil> {
+// Serve para os dois perfis: a foto é do usuário logado.
+export async function enviarFoto(foto: FotoEscolhida): Promise<{ fotoUrl: string }> {
   if (USE_MOCK) {
     return mockEnviarFoto(foto);
   }
@@ -108,7 +112,28 @@ export async function enviarFotoPrestador(foto: FotoEscolhida): Promise<Prestado
     form.append('foto', { uri: foto.uri, name: foto.nome, type: foto.tipo } as unknown as Blob);
   }
 
-  return request<PrestadorPerfil>('/prestadores/me/foto', { method: 'PUT', body: form });
+  return request<{ fotoUrl: string }>('/usuarios/me/foto', { method: 'PUT', body: form });
+}
+
+export async function getClienteMe(): Promise<ClientePerfil> {
+  if (USE_MOCK) {
+    return mockGetClienteMe();
+  }
+  return request<ClientePerfil>('/clientes/me');
+}
+
+export async function atualizarCliente(data: AtualizarClienteRequest): Promise<ClientePerfil> {
+  if (USE_MOCK) {
+    return mockAtualizarCliente(data);
+  }
+  return request<ClientePerfil>('/clientes/me', { method: 'PUT', body: data });
+}
+
+export async function alterarSenha(data: AlterarSenhaRequest): Promise<void> {
+  if (USE_MOCK) {
+    return mockAlterarSenha(data);
+  }
+  return request<void>('/usuarios/me/senha', { method: 'PUT', body: data });
 }
 
 // O backend devolve o caminho relativo à base da API; o modo simulado guarda o arquivo local.
@@ -125,7 +150,7 @@ export function urlFoto(fotoUrl: string | null): string | undefined {
 // Prestador (mesma senha): ver MOCK_PRESTADOR abaixo.
 // ---------------------------------------------------------------------------
 
-const MOCK_SENHA = 'Senha@123';
+let MOCK_SENHA = 'Senha@123';
 
 const MOCK_USER: Usuario = {
   id: 'mock-1',
@@ -252,8 +277,53 @@ async function mockAtualizarPrestador(
   return MOCK_PRESTADOR;
 }
 
-async function mockEnviarFoto(foto: FotoEscolhida): Promise<PrestadorPerfil> {
+let MOCK_CLIENTE: ClientePerfil = {
+  usuario: MOCK_USER,
+  telefone: '11987654321',
+  endereco: {
+    cep: '01310100',
+    logradouro: 'Avenida Paulista',
+    numero: '1000',
+    complemento: null,
+    bairro: 'Bela Vista',
+    cidade: 'São Paulo',
+    uf: 'SP',
+  },
+  fotoUrl: null,
+};
+
+async function mockEnviarFoto(foto: FotoEscolhida): Promise<{ fotoUrl: string }> {
   await delay(500);
-  MOCK_PRESTADOR = { ...MOCK_PRESTADOR, fotoUrl: foto.uri };
-  return MOCK_PRESTADOR;
+  if (mockLogado.perfil === 'PRESTADOR') {
+    MOCK_PRESTADOR = { ...MOCK_PRESTADOR, fotoUrl: foto.uri };
+  } else {
+    MOCK_CLIENTE = { ...MOCK_CLIENTE, fotoUrl: foto.uri };
+  }
+  return { fotoUrl: foto.uri };
+}
+
+async function mockGetClienteMe(): Promise<ClientePerfil> {
+  await delay(300);
+  return MOCK_CLIENTE;
+}
+
+async function mockAtualizarCliente(data: AtualizarClienteRequest): Promise<ClientePerfil> {
+  await delay(500);
+  MOCK_CLIENTE = {
+    ...MOCK_CLIENTE,
+    usuario: { ...MOCK_CLIENTE.usuario, nome: data.nome },
+    telefone: data.telefone,
+    endereco: { ...data.endereco, complemento: data.endereco.complemento ?? null },
+  };
+  return MOCK_CLIENTE;
+}
+
+async function mockAlterarSenha({ senhaAtual, novaSenha }: AlterarSenhaRequest): Promise<void> {
+  await delay(500);
+  if (senhaAtual !== MOCK_SENHA) {
+    throw new ApiError(400, 'SENHA_ATUAL_INCORRETA', 'A senha atual está incorreta.', {
+      senhaAtual: 'A senha atual está incorreta.',
+    });
+  }
+  MOCK_SENHA = novaSenha;
 }

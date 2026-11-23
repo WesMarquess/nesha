@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { Href, useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/Avatar';
@@ -18,11 +17,11 @@ import { Card } from '../../../src/components/Card';
 import { Notice } from '../../../src/components/Notice';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { formatarValor } from '../../../src/data/agendamentos';
+import { useFotoDePerfil } from '../../../src/hooks/useFotoDePerfil';
 import { ApiError } from '../../../src/services/api';
 import {
   atualizarPrestador,
   dadosEditaveis,
-  enviarFotoPrestador,
   getPrestadorMe,
   urlFoto,
 } from '../../../src/services/auth';
@@ -34,8 +33,6 @@ const UNIDADES: Record<UnidadePreco, string> = {
   HORA: 'hora',
   SERVICO: 'serviço',
 };
-
-const TAMANHO_MAXIMO_FOTO = 5 * 1024 * 1024;
 
 type Mensagem = { tom: 'success' | 'error'; texto: string };
 
@@ -77,7 +74,7 @@ export default function PerfilPrestador() {
   const [perfil, setPerfil] = useState<PrestadorPerfil | null>(null);
   const [erro, setErro] = useState('');
   const [mensagem, setMensagem] = useState<Mensagem | null>(null);
-  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const foto = useFotoDePerfil();
   const [trocandoStatus, setTrocandoStatus] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [saindo, setSaindo] = useState(false);
@@ -133,44 +130,16 @@ export default function PerfilPrestador() {
     }
   }
 
-  // Na web o seletor só abre se for chamado direto do toque no botão.
   async function alterarFoto() {
     setMensagem(null);
-    const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-
-    if (resultado.canceled || !resultado.assets?.length) {
-      return;
-    }
-
-    const asset = resultado.assets[0];
-    const tamanho = asset.fileSize ?? asset.file?.size ?? 0;
-    if (tamanho > TAMANHO_MAXIMO_FOTO) {
-      setMensagem({ tom: 'error', texto: 'A foto deve ter no máximo 5 MB.' });
-      return;
-    }
-
-    setEnviandoFoto(true);
     try {
-      const atualizado = await enviarFotoPrestador({
-        uri: asset.uri,
-        nome: asset.fileName ?? 'foto.jpg',
-        tipo: asset.mimeType ?? 'image/jpeg',
-        file: asset.file,
-      });
-      setPerfil(atualizado);
-      setMensagem({ tom: 'success', texto: 'Foto de perfil atualizada.' });
+      const fotoUrl = await foto.escolher();
+      if (fotoUrl) {
+        setPerfil((atual) => (atual ? { ...atual, fotoUrl } : atual));
+        setMensagem({ tom: 'success', texto: 'Foto de perfil atualizada.' });
+      }
     } catch (error) {
-      setMensagem({
-        tom: 'error',
-        texto: mensagemDeErro(error, 'Não foi possível enviar a foto. Tente novamente.'),
-      });
-    } finally {
-      setEnviandoFoto(false);
+      setMensagem({ tom: 'error', texto: (error as Error).message });
     }
   }
 
@@ -247,7 +216,7 @@ export default function PerfilPrestador() {
             <Card style={styles.identity}>
               <Avatar nome={perfil.usuario.nome} size={80} uri={urlFoto(perfil.fotoUrl)} />
               <View style={styles.fotoAcao}>
-                {enviandoFoto ? (
+                {foto.enviando ? (
                   <ActivityIndicator color={colors.primary} accessibilityLabel="Enviando foto" />
                 ) : (
                   <Acao

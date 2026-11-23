@@ -67,10 +67,31 @@ export type PrestadorPerfil = {
   unidadePreco: UnidadePreco;
   tempoResposta: string | null;
   online: boolean;
-  fotoUrl: string | null; // relativo à base da API, ex.: "/prestadores/{id}/foto?v=..."
+  fotoUrl: string | null; // relativo à base da API, ex.: "/usuarios/{id}/foto?v=..."
   especialidades: string[];
   diasAtendimento: number[]; // 0 = domingo ... 6 = sábado
   disponibilidade: string; // ex.: "Seg a Sáb"; vazio se não houver dias
+};
+
+// GET /clientes/me
+export type ClientePerfil = {
+  usuario: Usuario;
+  telefone: string; // só dígitos
+  endereco: Omit<EnderecoRequest, 'complemento'> & { complemento: string | null };
+  fotoUrl: string | null; // relativo à base da API, ex.: "/usuarios/{id}/foto?v=..."
+};
+
+// PUT /clientes/me — e-mail e CPF não são editáveis.
+export type AtualizarClienteRequest = {
+  nome: string;
+  telefone: string; // só dígitos
+  endereco: EnderecoRequest;
+};
+
+// PUT /usuarios/me/senha
+export type AlterarSenhaRequest = {
+  senhaAtual: string;
+  novaSenha: string;
 };
 
 // PUT /prestadores/me — o app envia todos os campos editáveis.

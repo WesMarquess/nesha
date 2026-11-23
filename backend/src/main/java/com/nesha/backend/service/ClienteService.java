@@ -1,7 +1,9 @@
 package com.nesha.backend.service;
 
+import com.nesha.backend.dto.AtualizarClienteRequest;
 import com.nesha.backend.dto.CadastroClienteRequest;
 import com.nesha.backend.dto.CadastroClienteResponse;
+import com.nesha.backend.dto.ClienteResponse;
 import com.nesha.backend.dto.UsuarioResponse;
 import com.nesha.backend.entity.Endereco;
 import com.nesha.backend.entity.Perfil;
@@ -9,9 +11,11 @@ import com.nesha.backend.entity.Usuario;
 import com.nesha.backend.exception.ApiException;
 import com.nesha.backend.repository.UsuarioRepository;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ClienteService {
@@ -64,5 +68,39 @@ public class ClienteService {
         usuario = usuarioRepository.save(usuario);
 
         return new CadastroClienteResponse(UsuarioResponse.from(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponse buscarPerfil(UUID usuarioId) {
+        return ClienteResponse.from(clienteDoUsuario(usuarioId));
+    }
+
+    @Transactional
+    public ClienteResponse atualizar(UUID usuarioId, AtualizarClienteRequest request) {
+        Usuario usuario = clienteDoUsuario(usuarioId);
+
+        var e = request.endereco();
+        String complemento = e.complemento() == null ? "" : e.complemento().trim();
+
+        usuario.setNome(request.nome().trim());
+        usuario.setTelefone(request.telefone());
+        usuario.setEndereco(new Endereco(
+                e.cep(),
+                e.logradouro().trim(),
+                e.numero().trim(),
+                complemento.isEmpty() ? null : complemento,
+                e.bairro().trim(),
+                e.cidade().trim(),
+                e.uf()));
+
+        return ClienteResponse.from(usuario);
+    }
+
+    private Usuario clienteDoUsuario(UUID usuarioId) {
+        return usuarioRepository
+                .findById(usuarioId)
+                .filter(usuario -> usuario.getPerfil() == Perfil.CLIENTE)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "CLIENTE_NAO_ENCONTRADO", "Perfil de cliente não encontrado."));
     }
 }

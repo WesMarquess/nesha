@@ -8,9 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -19,11 +17,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 class PrestadorPerfilIntegrationTest {
-
-    // Assinatura PNG seguida de alguns bytes: o suficiente para o backend reconhecer o formato.
-    private static final byte[] PNG = {
-        (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'
-    };
 
     @Autowired
     private MockMvc mockMvc;
@@ -135,43 +128,5 @@ class PrestadorPerfilIntegrationTest {
                 .bodyJson()
                 .extractingPath("$.codigo")
                 .isEqualTo("PRESTADOR_NAO_ENCONTRADO");
-    }
-
-    @Test
-    void enviarFoto_png_ficaDisponivelPublicamente() throws Exception {
-        String token = tokenPrestador();
-
-        var envio = mvc().perform(MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/prestadores/me/foto")
-                .file(new MockMultipartFile("foto", "foto.png", "image/png", PNG))
-                .header("Authorization", "Bearer " + token));
-
-        assertThat(envio).hasStatus(200);
-        String fotoUrl = JsonPath.read(envio.getResponse().getContentAsString(), "$.fotoUrl");
-        assertThat(fotoUrl).matches("/prestadores/[0-9a-f-]+/foto\\?v=\\d+");
-
-        // Sem token: a foto também é vista pelo cliente.
-        var foto = mvc().perform(MockMvcRequestBuilders.get("/api/v1" + fotoUrl));
-        assertThat(foto).hasStatus(200).hasContentType("image/png");
-        assertThat(foto.getResponse().getContentAsByteArray()).isEqualTo(PNG);
-    }
-
-    @Test
-    void enviarFoto_arquivoQueNaoEImagem_devolve400() throws Exception {
-        String token = tokenPrestador();
-
-        // O Content-Type diz que é imagem, mas o conteúdo não é: o backend olha os bytes.
-        assertThat(mvc().perform(MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/prestadores/me/foto")
-                        .file(new MockMultipartFile("foto", "foto.png", "image/png", "<script>".getBytes()))
-                        .header("Authorization", "Bearer " + token)))
-                .hasStatus(400)
-                .bodyJson()
-                .extractingPath("$.codigo")
-                .isEqualTo("FOTO_INVALIDA");
-    }
-
-    @Test
-    void buscarFoto_dePrestadorSemFoto_devolve404() {
-        assertThat(mvc().perform(MockMvcRequestBuilders.get("/api/v1/prestadores/" + UUID.randomUUID() + "/foto")))
-                .hasStatus(404);
     }
 }

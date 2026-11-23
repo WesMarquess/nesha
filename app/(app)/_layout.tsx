@@ -33,6 +33,8 @@ export default function AppLayout() {
   // Substituição do Stack pelo Tabs para criar a barra inferior
   return (
     <Tabs
+      // Voltar segue o histórico (ex.: detalhe -> agenda), e não sempre a primeira aba.
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary, // Cor verde quando ativo
@@ -94,6 +96,8 @@ export default function AppLayout() {
       <Tabs.Screen name="agendamento/[id]" options={{ href: null }} />
       <Tabs.Screen name="cancelar/[id]" options={{ href: null }} />
       <Tabs.Screen name="avaliar/[id]" options={{ href: null }} />
+      <Tabs.Screen name="configuracoes" options={{ href: null, ...semBarraDoTabs }} />
+      <Tabs.Screen name="alterar-senha" options={{ href: null }} />
 
       {/* Área do Prestador: navegação própria em prestador/_layout.tsx */}
       <Tabs.Screen name="prestador" options={{ href: null, ...semBarraDoTabs }} />
