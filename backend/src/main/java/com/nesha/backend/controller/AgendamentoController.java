@@ -4,6 +4,8 @@ import com.nesha.backend.dto.AgendamentoResponse;
 import com.nesha.backend.dto.AvaliarAgendamentoRequest;
 import com.nesha.backend.dto.CancelarAgendamentoRequest;
 import com.nesha.backend.dto.CriarAgendamentoRequest;
+import com.nesha.backend.dto.IniciarPagamentoRequest;
+import com.nesha.backend.dto.PagamentoIniciadoResponse;
 import com.nesha.backend.dto.RecusarAgendamentoRequest;
 import com.nesha.backend.entity.StatusAgendamento;
 import com.nesha.backend.entity.Usuario;
@@ -82,5 +84,18 @@ public class AgendamentoController {
             @PathVariable UUID id,
             @Valid @RequestBody AvaliarAgendamentoRequest request) {
         return agendamentoService.avaliar(usuario, id, request);
+    }
+
+    @PostMapping("/{id}/pagamento")
+    public PagamentoIniciadoResponse iniciarPagamento(
+            @AuthenticationPrincipal Usuario usuario,
+            @PathVariable UUID id,
+            @Valid @RequestBody(required = false) IniciarPagamentoRequest request) {
+        return agendamentoService.iniciarPagamento(usuario, id, request == null ? null : request.retornoUrl());
+    }
+
+    @PostMapping("/{id}/pagamento/verificar")
+    public AgendamentoResponse verificarPagamento(@AuthenticationPrincipal Usuario usuario, @PathVariable UUID id) {
+        return agendamentoService.verificarPagamento(usuario, id);
     }
 }

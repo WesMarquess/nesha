@@ -26,6 +26,8 @@ import {
 import { colors } from '../../../../src/theme/colors';
 
 const STATUS_TEXTO: Record<StatusAgendamento, [string, string]> = {
+  // O prestador não chega a ver agendamentos não pagos; mantido para o tipo ficar completo.
+  AGUARDANDO_PAGAMENTO: ['Aguardando pagamento', 'O cliente ainda não concluiu o pagamento.'],
   CONFIRMADO: [
     'Agendamento Confirmado',
     'Serviço confirmado para atendimento no endereço do cliente.',
@@ -36,6 +38,7 @@ const STATUS_TEXTO: Record<StatusAgendamento, [string, string]> = {
 };
 
 const DOT: Record<StatusAgendamento, string> = {
+  AGUARDANDO_PAGAMENTO: colors.warningIcon,
   CONFIRMADO: colors.primary,
   PENDENTE: colors.warningIcon,
   CONCLUIDO: colors.primary,

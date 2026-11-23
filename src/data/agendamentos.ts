@@ -7,14 +7,17 @@ import {
   cancelarApi,
   concluirApi,
   criarAgendamentoApi,
+  iniciarPagamentoApi,
   listarAgendamentosApi,
   recusarApi,
+  verificarPagamentoApi,
 } from '../services/agendamentos';
 import { urlFoto } from '../services/auth';
 import type {
   AgendamentoApi,
   CriarAgendamentoRequest,
   StatusAgendamento,
+  StatusPagamento,
 } from '../types/agendamento';
 import { chaveDoDia, dataCurta, dataLonga, hora } from '../utils/datas';
 import { maskPhone } from '../utils/masks';
@@ -64,6 +67,7 @@ export type Agendamento = {
   observacoes?: string;
   motivoCancelamento?: string;
   avaliacao?: Avaliacao;
+  pagamentoStatus: StatusPagamento | null; // null = sem cobrança ("a combinar")
 };
 
 export const MOTIVOS_CANCELAMENTO = [
@@ -135,6 +139,7 @@ export function deApi(a: AgendamentoApi): Agendamento {
     avaliacao: a.avaliacao
       ? { ...a.avaliacao, comentario: a.avaliacao.comentario ?? '' }
       : undefined,
+    pagamentoStatus: a.pagamentoStatus,
   };
 }
 
@@ -264,6 +269,22 @@ export function avaliarAgendamento(id: string, avaliacao: Avaliacao) {
   );
 }
 
+// Cria o checkout do Mercado Pago. Só para quem ainda precisa pagar (padrão State).
+export async function iniciarPagamento(id: string, retornoUrl?: string) {
+  const atual = buscarAgendamento(id);
+  if (atual && !estadoDe(atual).podePagar) {
+    throw new TransicaoInvalidaError('pagar', atual.status);
+  }
+  return iniciarPagamentoApi(id, retornoUrl);
+}
+
+// Pergunta ao backend se o pagamento foi aprovado; aprovado, o agendamento vira PENDENTE.
+export async function verificarPagamento(id: string): Promise<Agendamento> {
+  const atualizado = deApi(await verificarPagamentoApi(id));
+  substituir(atualizado);
+  return atualizado;
+}
+
 export async function criarAgendamento(dados: CriarAgendamentoRequest): Promise<Agendamento> {
   const novo = deApi(await criarAgendamentoApi(dados));
   substituir(novo);
@@ -279,6 +300,7 @@ export function primeiroNome(nome: string): string {
 }
 
 export const STATUS_LABEL: Record<StatusAgendamento, string> = {
+  AGUARDANDO_PAGAMENTO: 'Aguardando pagamento',
   PENDENTE: 'Pendente',
   CONFIRMADO: 'Confirmado',
   CONCLUIDO: 'Concluído',

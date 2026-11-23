@@ -2,6 +2,7 @@ package com.nesha.backend.dto;
 
 import com.nesha.backend.entity.Agendamento;
 import com.nesha.backend.entity.StatusAgendamento;
+import com.nesha.backend.entity.StatusPagamento;
 import com.nesha.backend.entity.Usuario;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -20,6 +21,7 @@ public record AgendamentoResponse(
         String observacoes,
         String motivoCancelamento,
         AvaliacaoResponse avaliacao,
+        StatusPagamento pagamentoStatus,
         OffsetDateTime criadoEm) {
 
     public record PrestadorResumo(String id, String nome, String telefone, String fotoUrl, Double nota, long avaliacoes) {}
@@ -44,6 +46,7 @@ public record AgendamentoResponse(
                 a.getObservacoes(),
                 a.getMotivoCancelamento(),
                 AvaliacaoResponse.from(a),
+                a.getPagamentoStatus(),
                 a.getCriadoEm().atZone(fuso).toOffsetDateTime());
     }
 }

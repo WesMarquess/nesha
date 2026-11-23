@@ -16,6 +16,7 @@ import {
   StatusAgendamento,
   textoPeriodo,
 } from '../../src/data/agendamentos';
+import { estadoDe } from '../../src/data/estadosAgendamento';
 import {
   useAgendamentos,
   useRecarregarAoFocar,
@@ -50,7 +51,10 @@ export default function AgendaCliente() {
     }, [params.aba])
   );
 
-  const lista = agendamentos.filter((a) => a.status === aba);
+  // "Pendentes" inclui os que ainda aguardam pagamento.
+  const lista = agendamentos.filter(
+    (a) => a.status === aba || (aba === 'PENDENTE' && a.status === 'AGUARDANDO_PAGAMENTO')
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -97,11 +101,20 @@ export default function AgendaCliente() {
                 text={`${item.regiao}, ${item.cidade} • ${item.endereco.split(' - ')[0]}`}
               />
 
-              <Button
-                title="Ver detalhes"
-                style={styles.cardButton}
-                onPress={() => router.push(`/agendamento/${item.id}` as Href)}
-              />
+              {estadoDe(item).podePagar ? (
+                <Button
+                  title="Pagar agora"
+                  icon="card-outline"
+                  style={styles.cardButton}
+                  onPress={() => router.push(`/pagamento/${item.id}` as Href)}
+                />
+              ) : (
+                <Button
+                  title="Ver detalhes"
+                  style={styles.cardButton}
+                  onPress={() => router.push(`/agendamento/${item.id}` as Href)}
+                />
+              )}
             </Card>
 
             {item.status === 'CONFIRMADO' && (

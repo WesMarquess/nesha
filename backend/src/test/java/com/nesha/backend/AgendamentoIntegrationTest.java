@@ -107,10 +107,17 @@ class AgendamentoIntegrationTest {
                 "{\"prestadorId\":\"%s\",%s,\"observacoes\":\"Portão azul.\"}".formatted(prestador.id(), periodo(dia, de, ate)));
     }
 
+    // Cria e paga (os testes rodam sem Access Token: o pagamento é simulado e aprova na hora).
     private String criar(Conta cliente, Conta prestador, LocalDate dia, int de, int ate) throws Exception {
         MvcTestResult resposta = solicitar(cliente, prestador, dia, de, ate);
         assertThat(resposta).hasStatus(201);
-        return JsonPath.read(resposta.getResponse().getContentAsString(), "$.id");
+        String id = JsonPath.read(resposta.getResponse().getContentAsString(), "$.id");
+        assertThat(acao(cliente, id, "pagamento", null)).hasStatus(200);
+        assertThat(acao(cliente, id, "pagamento/verificar", null))
+                .bodyJson()
+                .extractingPath("$.status")
+                .isEqualTo("PENDENTE");
+        return id;
     }
 
     private MvcTestResult acao(Conta conta, String id, String acao, String corpo) {
@@ -118,29 +125,100 @@ class AgendamentoIntegrationTest {
     }
 
     @Test
-    void criar_comoCliente_ficaPendenteComDadosDoPrestadorEEnderecoDoCliente() throws Exception {
+    void criar_comoCliente_aguardaPagamentoComDadosDoPrestadorEEnderecoDoCliente() throws Exception {
         Conta cliente = cliente();
         Conta prestador = prestador();
 
         MvcTestResult resposta = solicitar(cliente, prestador, proxima(DayOfWeek.WEDNESDAY), 13, 17);
 
         assertThat(resposta).hasStatus(201);
-        assertThat(resposta).bodyJson().extractingPath("$.status").isEqualTo("PENDENTE");
+        assertThat(resposta).bodyJson().extractingPath("$.status").isEqualTo("AGUARDANDO_PAGAMENTO");
+        assertThat(resposta).bodyJson().extractingPath("$.pagamentoStatus").isEqualTo("AGUARDANDO");
         assertThat(resposta).bodyJson().extractingPath("$.servico").isEqualTo("Jardineiro");
         assertThat(resposta).bodyJson().extractingPath("$.valor").isEqualTo(130.0);
         assertThat(resposta).bodyJson().extractingPath("$.endereco.complemento").isEqualTo("Apto 12");
         assertThat(resposta).bodyJson().extractingPath("$.observacoes").isEqualTo("Portão azul.");
         assertThat(resposta).bodyJson().extractingPath("$.prestador.id").isEqualTo(prestador.id());
+    }
 
-        // Aparece para os dois participantes.
+    @Test
+    void pagamento_soDepoisDeAprovadoChegaAoPrestador() throws Exception {
+        Conta cliente = cliente();
+        Conta prestador = prestador();
+        MvcTestResult criado = solicitar(cliente, prestador, proxima(DayOfWeek.WEDNESDAY), 8, 12);
+        String id = JsonPath.read(criado.getResponse().getContentAsString(), "$.id");
+
+        // Antes de pagar, o prestador não vê nem consegue agir.
+        assertThat(chamar(MockMvcRequestBuilders.get("/api/v1/agendamentos"), prestador, null))
+                .bodyJson()
+                .extractingPath("$.length()")
+                .isEqualTo(0);
+        assertThat(chamar(MockMvcRequestBuilders.get("/api/v1/agendamentos/" + id), prestador, null)).hasStatus(404);
+        assertThat(acao(prestador, id, "aceitar", null)).hasStatus(404);
+
+        MvcTestResult iniciado = acao(cliente, id, "pagamento", "{\"retornoUrl\":\"nesha://pagamento\"}");
+        assertThat(iniciado).hasStatus(200);
+        assertThat(iniciado).bodyJson().extractingPath("$.simulado").isEqualTo(true);
+        assertThat(iniciado).bodyJson().extractingPath("$.urlCheckout").isNull();
+
+        MvcTestResult verificado = acao(cliente, id, "pagamento/verificar", null);
+        assertThat(verificado).bodyJson().extractingPath("$.status").isEqualTo("PENDENTE");
+        assertThat(verificado).bodyJson().extractingPath("$.pagamentoStatus").isEqualTo("APROVADO");
+
         assertThat(chamar(MockMvcRequestBuilders.get("/api/v1/agendamentos"), prestador, null))
                 .bodyJson()
                 .extractingPath("$.length()")
                 .isEqualTo(1);
-        assertThat(chamar(MockMvcRequestBuilders.get("/api/v1/agendamentos?status=PENDENTE"), cliente, null))
+
+        // Pagar de novo um agendamento já pago não é permitido.
+        assertThat(acao(cliente, id, "pagamento", null))
+                .hasStatus(409)
                 .bodyJson()
-                .extractingPath("$.length()")
-                .isEqualTo(1);
+                .extractingPath("$.codigo")
+                .isEqualTo("TRANSICAO_INVALIDA");
+    }
+
+    @Test
+    void semPreco_vaiDiretoParaOPrestadorSemPagamento() throws Exception {
+        Conta cliente = cliente();
+        Conta prestador = cadastrar("/api/v1/prestadores", """
+                ,"servicoPrincipal":"Jardineiro","areaAtendimento":"São Paulo"
+                """);
+
+        MvcTestResult resposta = solicitar(cliente, prestador, proxima(DayOfWeek.FRIDAY), 8, 12);
+        assertThat(resposta).bodyJson().extractingPath("$.status").isEqualTo("PENDENTE");
+        assertThat(resposta).bodyJson().extractingPath("$.valor").isNull();
+        assertThat(resposta).bodyJson().extractingPath("$.pagamentoStatus").isNull();
+    }
+
+    @Test
+    void recusarOuCancelarDepoisDePago_estornaOPagamento() throws Exception {
+        Conta cliente = cliente();
+        Conta prestador = prestador();
+        String recusado = criar(cliente, prestador, proxima(DayOfWeek.THURSDAY), 8, 12);
+        String cancelado = criar(cliente, prestador, proxima(DayOfWeek.THURSDAY), 13, 17);
+
+        assertThat(acao(prestador, recusado, "recusar", null))
+                .bodyJson()
+                .extractingPath("$.pagamentoStatus")
+                .isEqualTo("ESTORNADO");
+
+        acao(prestador, cancelado, "aceitar", null);
+        assertThat(acao(cliente, cancelado, "cancelar", "{\"motivo\":\"Problema de agenda\"}"))
+                .bodyJson()
+                .extractingPath("$.pagamentoStatus")
+                .isEqualTo("ESTORNADO");
+    }
+
+    @Test
+    void cancelarAntesDePagar_naoEstorna() throws Exception {
+        Conta cliente = cliente();
+        MvcTestResult criado = solicitar(cliente, prestador(), proxima(DayOfWeek.TUESDAY), 8, 12);
+        String id = JsonPath.read(criado.getResponse().getContentAsString(), "$.id");
+
+        MvcTestResult cancelado = acao(cliente, id, "cancelar", "{\"motivo\":\"Mudança de planos\"}");
+        assertThat(cancelado).bodyJson().extractingPath("$.status").isEqualTo("CANCELADO");
+        assertThat(cancelado).bodyJson().extractingPath("$.pagamentoStatus").isEqualTo("AGUARDANDO");
     }
 
     @Test

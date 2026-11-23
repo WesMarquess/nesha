@@ -1,7 +1,18 @@
 // Tipos do contrato de agendamentos e do catálogo de prestadores. Ver docs/AGENDA.md e docs/API.md.
 import type { UnidadePreco } from './auth';
 
-export type StatusAgendamento = 'PENDENTE' | 'CONFIRMADO' | 'CONCLUIDO' | 'CANCELADO';
+export type StatusAgendamento =
+  | 'AGUARDANDO_PAGAMENTO' // criado pelo cliente; o prestador só vê depois de pago
+  | 'PENDENTE'
+  | 'CONFIRMADO'
+  | 'CONCLUIDO'
+  | 'CANCELADO';
+
+export type StatusPagamento = 'AGUARDANDO' | 'APROVADO' | 'RECUSADO' | 'ESTORNADO';
+
+// POST /agendamentos/{id}/pagamento. urlCheckout = Checkout Pro do Mercado Pago;
+// null quando o backend está sem Access Token (pagamento simulado).
+export type PagamentoIniciado = { urlCheckout: string | null; simulado: boolean };
 
 export type EnderecoApi = {
   cep: string;
@@ -34,6 +45,7 @@ export type AgendamentoApi = {
   observacoes: string | null;
   motivoCancelamento: string | null;
   avaliacao: { nota: number; destaques: string[]; comentario: string | null } | null;
+  pagamentoStatus: StatusPagamento | null; // null = sem cobrança (preço "a combinar")
   criadoEm: string;
 };
 

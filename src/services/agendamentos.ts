@@ -5,6 +5,7 @@ import type {
   AvaliarAgendamentoRequest,
   CriarAgendamentoRequest,
   HorarioOcupado,
+  PagamentoIniciado,
   PrestadorCatalogo,
   StatusAgendamento,
 } from '../types/agendamento';
@@ -46,6 +47,21 @@ export const recusarApi = (id: string) => acao(id, 'recusar', {});
 export const concluirApi = (id: string) => acao(id, 'concluir');
 export const avaliarApi = (id: string, dados: AvaliarAgendamentoRequest) =>
   acao(id, 'avaliacao', dados);
+
+export function iniciarPagamentoApi(id: string, retornoUrl?: string): Promise<PagamentoIniciado> {
+  if (USE_MOCK) return mock.iniciarPagamento();
+  return request<PagamentoIniciado>(`/agendamentos/${encodeURIComponent(id)}/pagamento`, {
+    method: 'POST',
+    body: retornoUrl ? { retornoUrl } : {},
+  });
+}
+
+export function verificarPagamentoApi(id: string): Promise<AgendamentoApi> {
+  if (USE_MOCK) return mock.verificarPagamento(id);
+  return request<AgendamentoApi>(`/agendamentos/${encodeURIComponent(id)}/pagamento/verificar`, {
+    method: 'POST',
+  });
+}
 
 export function listarPrestadores(servicos: string[]): Promise<PrestadorCatalogo[]> {
   if (USE_MOCK) return mock.prestadores(servicos);
@@ -133,6 +149,7 @@ const mock = (() => {
     observacoes: null,
     motivoCancelamento: null,
     avaliacao: null,
+    pagamentoStatus: 'APROVADO' as const,
     criadoEm: isoComFuso(hoje),
   };
 
@@ -177,7 +194,8 @@ const mock = (() => {
       const novo: AgendamentoApi = {
         ...base,
         id: `ag-${Date.now()}`,
-        status: 'PENDENTE',
+        status: 'AGUARDANDO_PAGAMENTO',
+        pagamentoStatus: 'AGUARDANDO',
         inicio: dados.inicio,
         fim: dados.fim,
         observacoes: dados.observacoes ?? null,
@@ -206,6 +224,20 @@ const mock = (() => {
             };
       lista = lista.map((a) => (a.id === id ? atualizado : a));
       return atualizado;
+    },
+    async iniciarPagamento(): Promise<PagamentoIniciado> {
+      await delay();
+      return { urlCheckout: null, simulado: true };
+    },
+    async verificarPagamento(id: string) {
+      await delay();
+      const atual = encontrar(id);
+      const pago: AgendamentoApi =
+        atual.status === 'AGUARDANDO_PAGAMENTO'
+          ? { ...atual, status: 'PENDENTE', pagamentoStatus: 'APROVADO' }
+          : atual;
+      lista = lista.map((a) => (a.id === id ? pago : a));
+      return pago;
     },
     async prestadores(servicos: string[]) {
       await delay();
