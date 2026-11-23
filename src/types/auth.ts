@@ -46,6 +46,45 @@ export type RegisterResponse = {
   usuario: Usuario;
 };
 
+// POST /prestadores — mesmos dados do cliente, mais os do perfil profissional.
+// Preço, especialidades e dias são definidos depois, nas configurações de serviço.
+export type CadastroPrestadorRequest = RegisterRequest & {
+  servicoPrincipal: string;
+  areaAtendimento: string;
+  sobreMim?: string;
+};
+
+export type UnidadePreco = 'DIA' | 'HORA' | 'SERVICO';
+
+// GET /prestadores/me
+export type PrestadorPerfil = {
+  usuario: Usuario;
+  telefone: string; // só dígitos
+  servicoPrincipal: string;
+  areaAtendimento: string;
+  sobreMim: string | null;
+  preco: number | null;
+  unidadePreco: UnidadePreco;
+  tempoResposta: string | null;
+  online: boolean;
+  fotoUrl: string | null; // relativo à base da API, ex.: "/prestadores/{id}/foto?v=..."
+  especialidades: string[];
+  diasAtendimento: number[]; // 0 = domingo ... 6 = sábado
+  disponibilidade: string; // ex.: "Seg a Sáb"; vazio se não houver dias
+};
+
+// PUT /prestadores/me — o app envia todos os campos editáveis.
+export type AtualizarPrestadorRequest = {
+  nome: string;
+  telefone: string; // só dígitos
+  servicoPrincipal: string;
+  areaAtendimento: string;
+  sobreMim: string;
+  preco: number | null;
+  unidadePreco: UnidadePreco;
+  online: boolean;
+};
+
 // Corpo padrão de erro devolvido pelo backend.
 export type ApiErrorBody = {
   codigo: string;

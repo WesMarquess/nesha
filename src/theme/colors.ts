@@ -19,4 +19,7 @@ export const colors = {
   warningText: '#7A5A12',
   warningIcon: '#B07D00', // 3,63:1 sobre branco (ícones: mínimo 3:1)
   star: '#B07D00', // 3,63:1 sobre branco
+  // Etiqueta "Prestador". O amarelo do Figma (#F2B705) tem 1,75:1 sobre o fundo;
+  // este tom mais escuro chega a 5,06:1 (WCAG AA).
+  prestadorTag: '#8F6400',
 };

@@ -30,6 +30,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
       loading,
       containerStyle,
       secureTextEntry,
+      multiline,
       style,
       ...rest
     },
@@ -42,7 +43,13 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
       <View style={[styles.field, containerStyle]}>
         <Text style={styles.label}>{label}</Text>
 
-        <View style={[styles.inputBox, !!error && styles.inputBoxError]}>
+        <View
+          style={[
+            styles.inputBox,
+            multiline && styles.inputBoxMultiline,
+            !!error && styles.inputBoxError,
+          ]}
+        >
           {!!icon && (
             <Ionicons
               name={icon}
@@ -54,9 +61,10 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
 
           <TextInput
             ref={ref}
-            style={[styles.input, style]}
+            style={[styles.input, multiline && styles.inputMultiline, style]}
             placeholderTextColor={colors.placeholder}
             secureTextEntry={isPassword && hidden}
+            multiline={multiline}
             {...rest}
           />
 
@@ -108,6 +116,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.surface,
   },
+  inputBoxMultiline: {
+    height: undefined,
+    minHeight: 96,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
   inputBoxError: {
     borderColor: colors.error,
   },
@@ -119,6 +133,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     paddingVertical: 0,
+  },
+  inputMultiline: {
+    minHeight: 72,
+    textAlignVertical: 'top',
   },
   errorText: {
     fontSize: 12,

@@ -192,7 +192,7 @@ export default function AgendaPrestador() {
         )}
       </ScrollView>
 
-      <BottomNav active="agenda" agendaHref="/prestador/agenda" />
+      <BottomNav active="agenda" area="prestador" />
     </SafeAreaView>
   );
 }

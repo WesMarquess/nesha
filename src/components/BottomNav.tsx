@@ -1,31 +1,41 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Href, useRouter } from 'expo-router';
+import { Href, usePathname, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 type Aba = 'catalogo' | 'agenda' | 'perfil';
 
-type BottomNavProps = {
-  active: Aba;
-  // Cliente: '/agenda'. Prestador: '/prestador/agenda'.
-  agendaHref?: string;
+type Item = {
+  key: Aba;
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
-export function BottomNav({ active, agendaHref = '/agenda' }: BottomNavProps) {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-
-  const items: {
-    key: Aba;
-    label: string;
-    href: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }[] = [
+// O prestador não contrata serviços, então não tem a aba Catálogo.
+const ITENS: Record<'cliente' | 'prestador', Item[]> = {
+  cliente: [
     { key: 'catalogo', label: 'Catálogo', href: '/home', icon: 'grid-outline' },
-    { key: 'agenda', label: 'Agenda', href: agendaHref, icon: 'calendar-outline' },
+    { key: 'agenda', label: 'Agenda', href: '/agenda', icon: 'calendar-outline' },
     { key: 'perfil', label: 'Perfil', href: '/perfil', icon: 'person-outline' },
-  ];
+  ],
+  prestador: [
+    { key: 'agenda', label: 'Agenda', href: '/prestador/agenda', icon: 'calendar-outline' },
+    { key: 'perfil', label: 'Perfil', href: '/prestador/perfil', icon: 'person-outline' },
+  ],
+};
+
+type BottomNavProps = {
+  active: Aba;
+  area?: 'cliente' | 'prestador';
+};
+
+export function BottomNav({ active, area = 'cliente' }: BottomNavProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const items = ITENS[area];
 
   return (
     <View
@@ -43,8 +53,10 @@ export function BottomNav({ active, agendaHref = '/agenda' }: BottomNavProps) {
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            // Compara com a rota, não com a aba ativa: em telas internas (ex.:
+            // Novas Solicitações) a aba Agenda fica marcada e precisa voltar à agenda.
             onPress={() => {
-              if (!selected) {
+              if (pathname !== item.href) {
                 router.replace(item.href as Href);
               }
             }}

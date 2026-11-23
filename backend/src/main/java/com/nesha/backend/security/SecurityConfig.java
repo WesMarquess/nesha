@@ -3,6 +3,7 @@ package com.nesha.backend.security;
 import com.nesha.backend.dto.ApiErrorResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -44,6 +45,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/api/v1/clientes", "/api/v1/prestadores", "/h2-console/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/prestadores/*/foto")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

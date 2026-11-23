@@ -72,6 +72,38 @@ class PrestadorIntegrationTest {
     }
 
     @Test
+    void cadastrarPrestador_semPrecoEspecialidadesEDias_devolve201() {
+        String corpo = """
+                {
+                  "nome": "Marta Rocha",
+                  "cpf": "%s",
+                  "telefone": "11987654321",
+                  "email": "%s",
+                  "senha": "Senha@123",
+                  "endereco": {
+                    "cep": "01310100",
+                    "logradouro": "Avenida Paulista",
+                    "numero": "1000",
+                    "bairro": "Bela Vista",
+                    "cidade": "São Paulo",
+                    "uf": "SP"
+                  },
+                  "servicoPrincipal": "Faxina residencial",
+                  "areaAtendimento": "São Paulo - Centro"
+                }
+                """
+                .formatted(cpfUnico(), "prestador-min-" + UUID.randomUUID() + "@email.com");
+
+        assertThat(mvc().perform(MockMvcRequestBuilders.post("/api/v1/prestadores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo)))
+                .hasStatus(201)
+                .bodyJson()
+                .extractingPath("$.usuario.perfil")
+                .isEqualTo("PRESTADOR");
+    }
+
+    @Test
     void cadastrarPrestador_comEmailDuplicado_devolve409() {
         String email = "prestador-dup-" + UUID.randomUUID() + "@email.com";
 

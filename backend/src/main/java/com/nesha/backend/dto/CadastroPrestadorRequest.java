@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -34,12 +33,10 @@ public record CadastroPrestadorRequest(
         @NotBlank(message = "Serviço principal é obrigatório.") @Size(max = 255) String servicoPrincipal,
         @NotBlank(message = "Área de atendimento é obrigatória.") @Size(max = 255) String areaAtendimento,
         @Size(max = 2000) String sobreMim,
-        @NotNull(message = "Preço é obrigatório.")
-                @DecimalMin(value = "0.0", inclusive = false, message = "Preço deve ser maior que zero.")
+        @DecimalMin(value = "0.0", inclusive = false, message = "Preço deve ser maior que zero.")
                 @Digits(integer = 8, fraction = 2)
                 BigDecimal preco,
         UnidadePreco unidadePreco,
         @Size(max = 100) String tempoResposta,
-        @NotEmpty(message = "Informe ao menos uma especialidade.") List<@NotBlank String> especialidades,
-        @NotEmpty(message = "Informe ao menos um dia de atendimento.")
-                List<@Min(0) @Max(6) Integer> diasAtendimento) {}
+        List<@NotBlank String> especialidades,
+        List<@NotNull @Min(0) @Max(6) Integer> diasAtendimento) {}
