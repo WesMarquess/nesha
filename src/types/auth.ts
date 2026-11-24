@@ -79,6 +79,7 @@ export type ClientePerfil = {
   telefone: string; // só dígitos
   endereco: Omit<EnderecoRequest, 'complemento'> & { complemento: string | null };
   fotoUrl: string | null; // relativo à base da API, ex.: "/usuarios/{id}/foto?v=..."
+  desde: number; // ano do cadastro
 };
 
 // PUT /clientes/me — e-mail e CPF não são editáveis.

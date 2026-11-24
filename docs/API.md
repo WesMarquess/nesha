@@ -337,9 +337,12 @@ Dados do cliente logado, para a tela de configurações. Token de prestador rece
     "cidade": "São Paulo",
     "uf": "SP"
   },
-  "fotoUrl": null
+  "fotoUrl": null,
+  "desde": 2023
 }
 ```
+
+`desde` é o ano do cadastro (perfil: "Cliente Nesha desde 2023"). O `PUT` devolve o mesmo formato.
 
 ### 3.4.3 `PUT /clientes/me`
 

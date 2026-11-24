@@ -563,11 +563,19 @@ export default function Cadastro() {
 
             <Text style={styles.termsText}>
               Li e concordo com os{' '}
-              <Text style={styles.link} onPress={() => {}}>
+              <Text
+                style={styles.link}
+                onPress={() => router.push({ pathname: '/termos', params: { tipo: 'uso' } })}
+                accessibilityRole="link"
+              >
                 Termos de Uso
               </Text>{' '}
               e a{' '}
-              <Text style={styles.link} onPress={() => {}}>
+              <Text
+                style={styles.link}
+                onPress={() => router.push({ pathname: '/termos', params: { tipo: 'privacidade' } })}
+                accessibilityRole="link"
+              >
                 Política de Privacidade
               </Text>{' '}
               da Nesha.

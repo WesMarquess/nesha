@@ -94,7 +94,7 @@ export default function AgendaCliente() {
 
               <IconLine
                 icon="calendar-outline"
-                text={`${item.dataCurta} • ${textoPeriodo(item.periodo)}`}
+                text={`${item.dataCurta} às ${item.horarioInicio} • ${textoPeriodo(item.periodo)}`}
               />
               <IconLine
                 icon="location-outline"
@@ -120,7 +120,7 @@ export default function AgendaCliente() {
             {item.status === 'CONFIRMADO' && (
               <Notice
                 icon="information-circle-outline"
-                text={`Lembre-se de deixar as ferramentas no local para o ${primeiroNome(item.prestador.nome)}.`}
+                text={`Lembre-se de deixar as ferramentas no local antes da chegada de ${primeiroNome(item.prestador.nome)}.`}
               />
             )}
           </View>

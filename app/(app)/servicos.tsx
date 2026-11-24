@@ -4,13 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../src/theme/colors';
-import { mockServices } from '../../src/utils/mocks';
+import { buscarServicos, mockServices } from '../../src/utils/mocks';
 import ServiceListItem from '../../src/components/ServiceListItem';
 
 export default function ServicosScreen() {
   const router = useRouter();
-  const { serviceId } = useLocalSearchParams<{ serviceId?: string }>();
-  const [search, setSearch] = useState('');
+  const { serviceId, busca = '' } = useLocalSearchParams<{ serviceId?: string; busca?: string }>();
+  // A busca da home chega como parâmetro; o texto digitado aqui vale até chegar uma nova busca.
+  const [pesquisa, setPesquisa] = useState({ busca, texto: busca });
+  const search = pesquisa.busca === busca ? pesquisa.texto : busca;
+  const setSearch = (texto: string) => setPesquisa({ busca, texto });
   const [selection, setSelection] = useState<{ serviceId?: string; ids: string[] }>(() => ({
     serviceId,
     ids: serviceId ? [serviceId] : [],
@@ -19,9 +22,7 @@ export default function ServicosScreen() {
     ? selection.ids
     : serviceId ? [serviceId] : [];
   const selectedServices = mockServices.filter((service) => selectedIds.includes(service.id));
-  const filteredServices = mockServices.filter((service) =>
-    service.title.toLocaleLowerCase('pt-BR').includes(search.trim().toLocaleLowerCase('pt-BR'))
-  );
+  const filteredServices = buscarServicos(mockServices, search);
 
   const toggleService = (id: string) => {
     setSelection({

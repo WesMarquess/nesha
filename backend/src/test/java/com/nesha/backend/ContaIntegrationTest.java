@@ -95,6 +95,8 @@ class ContaIntegrationTest {
         assertThat(resposta).bodyJson().extractingPath("$.telefone").isEqualTo("11987654321");
         assertThat(resposta).bodyJson().extractingPath("$.endereco.logradouro").isEqualTo("Avenida Paulista");
         assertThat(resposta).bodyJson().extractingPath("$.fotoUrl").isNull();
+        assertThat(resposta).bodyJson().extractingPath("$.desde")
+                .isEqualTo(java.time.Year.now(java.time.ZoneId.of("America/Sao_Paulo")).getValue());
     }
 
     @Test

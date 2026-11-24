@@ -290,6 +290,7 @@ let MOCK_CLIENTE: ClientePerfil = {
     uf: 'SP',
   },
   fotoUrl: null,
+  desde: 2023,
 };
 
 async function mockEnviarFoto(foto: FotoEscolhida): Promise<{ fotoUrl: string }> {

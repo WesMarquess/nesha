@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -6,10 +6,32 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { colors } from '../../src/theme/colors';
 import { useRouter } from 'expo-router';
 
+type Recomendado = {
+  serviceId: string;
+  nome: string;
+  descricao: string;
+  preco: string;
+  icone: React.ComponentProps<typeof Feather>['name'];
+};
+
+// Serviços recomendados do Figma (tela catalogo-servicos). Os ids são os do catálogo (mocks.ts).
+const RECOMENDADOS: Recomendado[] = [
+  { serviceId: '2', nome: 'Limpeza Residencial', descricao: 'Faxina padrão, pesada ou pós-obra', preco: 'A partir de R$ 130', icone: 'home' },
+  { serviceId: '5', nome: 'Passadeira e Lavadeira', descricao: 'Cuidado completo com suas roupas', preco: 'A partir de R$ 110', icone: 'wind' },
+  { serviceId: '15', nome: 'Cozinheiro Doméstico', descricao: 'Preparo de refeições e marmitas', preco: 'A partir de R$ 150', icone: 'coffee' },
+];
+
 export default function Home() {
   const { usuario, signOut } = useAuth();
   const router = useRouter();
-  
+  const [busca, setBusca] = useState('');
+
+  // A busca abre o catálogo completo já filtrado pelo texto digitado.
+  const buscar = () => {
+    const termo = busca.trim();
+    router.push({ pathname: '/servicos', params: termo ? { busca: termo } : {} });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -36,7 +58,17 @@ export default function Home() {
             placeholder="Buscar faxina, passar roupa, cozinhar..." 
             placeholderTextColor={colors.textMuted}
             style={styles.searchInput}
+            value={busca}
+            onChangeText={setBusca}
+            onSubmitEditing={buscar}
+            returnKeyType="search"
+            accessibilityLabel="Buscar serviços"
           />
+          {!!busca.trim() && (
+            <TouchableOpacity onPress={buscar} accessibilityRole="button" accessibilityLabel="Buscar">
+              <Feather name="arrow-right" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Banner de Desconto */}
@@ -51,31 +83,25 @@ export default function Home() {
         {/* Serviços Recomendados */}
         <Text style={styles.sectionTitle}>Serviços recomendados</Text>
         
-        {/* Card 1 */}
-        <TouchableOpacity style={styles.serviceCard} accessibilityRole="button" onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '2' } })}>
-          <View style={styles.serviceIconContainer}>
-             <Feather name="home" size={24} color={colors.primary} />
-          </View>
-          <View style={styles.serviceInfo}>
-            <Text style={styles.serviceName}>Limpeza Residencial</Text>
-            <Text style={styles.serviceDesc}>Faxina padrão, pesada ou pós-obra</Text>
-            <Text style={styles.servicePrice}>A partir de R$ 130</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color={colors.border || '#CCC'} />
-        </TouchableOpacity>
-
-        {/* Card 2 */}
-        <TouchableOpacity style={styles.serviceCard} accessibilityRole="button" onPress={() => router.push({ pathname: '/servicos', params: { serviceId: '5' } })}>
-          <View style={styles.serviceIconContainer}>
-             <Feather name="activity" size={24} color={colors.primary} />
-          </View>
-          <View style={styles.serviceInfo}>
-            <Text style={styles.serviceName}>Passadeira e Lavadeira</Text>
-            <Text style={styles.serviceDesc}>Cuidado completo com suas roupas</Text>
-            <Text style={styles.servicePrice}>A partir de R$ 110</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color={colors.border || '#CCC'} />
-        </TouchableOpacity>
+        {RECOMENDADOS.map((item) => (
+          <TouchableOpacity
+            key={item.serviceId}
+            style={styles.serviceCard}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.nome}, ${item.preco}`}
+            onPress={() => router.push({ pathname: '/servicos', params: { serviceId: item.serviceId } })}
+          >
+            <View style={styles.serviceIconContainer}>
+              <Feather name={item.icone} size={24} color={colors.primary} />
+            </View>
+            <View style={styles.serviceInfo}>
+              <Text style={styles.serviceName}>{item.nome}</Text>
+              <Text style={styles.serviceDesc}>{item.descricao}</Text>
+              <Text style={styles.servicePrice}>{item.preco}</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.border || '#CCC'} />
+          </TouchableOpacity>
+        ))}
 
         {/* Botão Ver Todos */}
         <TouchableOpacity 

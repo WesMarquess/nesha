@@ -5,11 +5,17 @@ import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../src/theme/colors';
 import { Avatar } from '../../src/components/Avatar';
+import { FiltrosProfissionaisSheet } from '../../src/components/FiltrosProfissionaisSheet';
 import { mensagemDeErro } from '../../src/data/agendamentos';
 import { precoDoPrestador, textoAvaliacoes } from '../../src/data/usePrestador';
 import { listarPrestadores } from '../../src/services/agendamentos';
 import { urlFoto } from '../../src/services/auth';
 import type { PrestadorCatalogo } from '../../src/types/agendamento';
+import {
+  contarFiltrosAtivos,
+  FILTROS_INICIAIS,
+  filtrarProfissionais,
+} from '../../src/utils/filtrosProfissionais';
 import { mockServices } from '../../src/utils/mocks';
 import {
   CriterioProfissionais,
@@ -25,6 +31,9 @@ export default function ListaProfissionaisScreen() {
   const [criterio, setCriterio] = useState<CriterioProfissionais>('recomendados');
   const [prestadores, setPrestadores] = useState<PrestadorCatalogo[] | null>(null);
   const [erro, setErro] = useState('');
+  const [filtros, setFiltros] = useState(FILTROS_INICIAIS);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const filtrosAtivos = contarFiltrosAtivos(filtros);
 
   // O "serviço principal" do prestador usa os mesmos nomes das categorias do catálogo.
   useEffect(() => {
@@ -41,7 +50,7 @@ export default function ListaProfissionaisScreen() {
     };
   }, [titulos]);
 
-  const profissionais = ordenarProfissionais(prestadores ?? [], criterio);
+  const profissionais = ordenarProfissionais(filtrarProfissionais(prestadores ?? [], filtros), criterio);
 
   const renderCard = ({ item }: { item: PrestadorCatalogo }) => (
     <View style={styles.card}>
@@ -109,8 +118,18 @@ export default function ListaProfissionaisScreen() {
         
         <View style={styles.titleRow}>
           <Text style={styles.title}>Profissionais</Text>
-          <TouchableOpacity style={styles.filterIcon} accessibilityRole="button" accessibilityLabel="Filtros">
-             <Feather name="sliders" size={20} color={colors.primary} />
+          <TouchableOpacity
+            style={[styles.filterIcon, filtrosAtivos > 0 && styles.filterIconActive]}
+            onPress={() => setFiltrosAbertos(true)}
+            accessibilityRole="button"
+            accessibilityLabel={filtrosAtivos > 0 ? `Filtros, ${filtrosAtivos} ativo${filtrosAtivos === 1 ? '' : 's'}` : 'Filtros'}
+          >
+            <Feather name="sliders" size={20} color={filtrosAtivos > 0 ? colors.primaryText : colors.primary} />
+            {filtrosAtivos > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{filtrosAtivos}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -152,9 +171,11 @@ export default function ListaProfissionaisScreen() {
               <ActivityIndicator color={colors.primary} accessibilityLabel="Carregando profissionais" />
             ) : (
               <Text style={styles.emptyText}>
-                {criterio === 'disponiveisHoje'
-                  ? 'Nenhum profissional atende hoje.'
-                  : 'Nenhum profissional disponível para este serviço ainda.'}
+                {filtrosAtivos > 0
+                  ? 'Nenhum profissional corresponde aos filtros escolhidos.'
+                  : criterio === 'disponiveisHoje'
+                    ? 'Nenhum profissional atende hoje.'
+                    : 'Nenhum profissional disponível para este serviço ainda.'}
               </Text>
             )
           }
@@ -162,6 +183,17 @@ export default function ListaProfissionaisScreen() {
           contentContainerStyle={styles.listContent}
         />
       </View>
+
+      <FiltrosProfissionaisSheet
+        visivel={filtrosAbertos}
+        filtros={filtros}
+        servicos={selectedServices.map((service) => service.title)}
+        onAplicar={(novos) => {
+          setFiltros(novos);
+          setFiltrosAbertos(false);
+        }}
+        onFechar={() => setFiltrosAbertos(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -213,6 +245,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '15', // Fundo verde muito claro
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  filterIconActive: {
+    backgroundColor: colors.primary,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   tagsContainer: {
     paddingLeft: 24,
