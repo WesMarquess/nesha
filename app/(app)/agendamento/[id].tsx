@@ -8,6 +8,7 @@ import { Avatar } from '../../../src/components/Avatar';
 import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { SummaryRow } from '../../../src/components/InfoRow';
+import { Notice } from '../../../src/components/Notice';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import {
   formatarValor,
@@ -24,6 +25,7 @@ import { textoAvaliacoes } from '../../../src/data/usePrestador';
 import { colors } from '../../../src/theme/colors';
 
 const DOT: Record<StatusAgendamento, string> = {
+  AGUARDANDO_PAGAMENTO: colors.warningIcon,
   CONFIRMADO: colors.primary,
   PENDENTE: colors.warningIcon,
   CONCLUIDO: colors.primary,
@@ -54,6 +56,7 @@ export default function DetalhesAgendamentoCliente() {
   const nome = primeiroNome(item.prestador.nome);
 
   const titulo: Record<StatusAgendamento, [string, string]> = {
+    AGUARDANDO_PAGAMENTO: ['Aguardando pagamento', `Pague para enviar a solicitação a ${nome}.`],
     CONFIRMADO: ['Agendamento Confirmado', `${nome} confirmou o horário.`],
     PENDENTE: ['Aguardando confirmação', `Esperando ${nome} confirmar o horário.`],
     CONCLUIDO: ['Serviço Concluído', `${nome} finalizou o serviço.`],
@@ -80,6 +83,14 @@ export default function DetalhesAgendamentoCliente() {
           </View>
           <Text style={styles.statusSub}>{statusSub}</Text>
         </Card>
+
+        {item.pagamentoStatus === 'ESTORNADO' && (
+          <Notice
+            tone="success"
+            icon="cash-outline"
+            text="O valor pago foi estornado pelo Mercado Pago. O prazo para aparecer depende da forma de pagamento."
+          />
+        )}
 
         <Card style={styles.person}>
           <Avatar nome={item.prestador.nome} size={44} uri={item.prestador.fotoUrl} />
@@ -128,6 +139,14 @@ export default function DetalhesAgendamentoCliente() {
             onPress={copiarTelefone}
           />
         </Card>
+
+        {estado.podePagar && (
+          <Button
+            title="Pagar agora"
+            icon="card-outline"
+            onPress={() => router.push(`/pagamento/${item.id}` as Href)}
+          />
+        )}
 
         {estado.podeCancelar && (
           <Button

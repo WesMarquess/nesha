@@ -95,6 +95,20 @@ public class Agendamento {
     @Builder.Default
     private List<String> destaques = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pagamento_status", length = 20)
+    private StatusPagamento pagamentoStatus;
+
+    // Preferência do Checkout Pro e pagamento aprovado no Mercado Pago (usado no estorno).
+    @Column(name = "pagamento_preferencia_id", length = 100)
+    private String pagamentoPreferenciaId;
+
+    @Column(name = "pagamento_id", length = 50)
+    private String pagamentoId;
+
+    @Column(name = "pagamento_atualizado_em")
+    private Instant pagamentoAtualizadoEm;
+
     @Column(name = "criado_em", nullable = false, updatable = false)
     @Builder.Default
     private Instant criadoEm = Instant.now();

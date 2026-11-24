@@ -40,6 +40,7 @@
 | GET | `/agendamentos` | Bearer | Agenda do cliente ou do prestador |
 | GET | `/agendamentos/{id}` | Bearer | Detalhes de um agendamento |
 | POST | `/agendamentos/{id}/{cancelar\|aceitar\|recusar\|concluir\|avaliacao}` | Bearer | Ações do ciclo de vida |
+| POST | `/agendamentos/{id}/pagamento` e `/pagamento/verificar` | Bearer (cliente) | Pagamento pelo Mercado Pago (`docs/AGENDA.md`, seção 13) |
 
 Os endpoints de agendamento e de catálogo de profissionais estão detalhados em `docs/AGENDA.md`, seção 11.
 | POST | `/auth/forgot-password` | Público | Previsto (tela ainda não existe) |

@@ -18,6 +18,7 @@ export type EstadoAgendamento = {
   podeCancelar: boolean;
   podeAvaliar: boolean;
   podeConcluir: boolean; // prestador marca o serviço como realizado
+  podePagar: boolean; // cliente ainda precisa pagar
   aceitar(ag: Agendamento): Agendamento;
   recusar(ag: Agendamento): Agendamento;
   cancelar(ag: Agendamento, motivo: string): Agendamento;
@@ -36,6 +37,7 @@ function estadoBase(status: StatusAgendamento): EstadoAgendamento {
     podeCancelar: false,
     podeAvaliar: false,
     podeConcluir: false,
+    podePagar: false,
     aceitar: invalida('aceitar'),
     recusar: invalida('recusar'),
     cancelar: invalida('cancelar'),
@@ -43,6 +45,14 @@ function estadoBase(status: StatusAgendamento): EstadoAgendamento {
     avaliar: invalida('avaliar'),
   };
 }
+
+// O backend passa para PENDENTE quando o pagamento é aprovado (POST /pagamento/verificar).
+const AguardandoPagamento: EstadoAgendamento = {
+  ...estadoBase('AGUARDANDO_PAGAMENTO'),
+  podePagar: true,
+  podeCancelar: true,
+  cancelar: (ag, motivo) => ({ ...ag, status: 'CANCELADO', motivoCancelamento: motivo }),
+};
 
 const Pendente: EstadoAgendamento = {
   ...estadoBase('PENDENTE'),
@@ -75,6 +85,7 @@ const Concluido: EstadoAgendamento = {
 const Cancelado: EstadoAgendamento = estadoBase('CANCELADO');
 
 const ESTADOS: Record<StatusAgendamento, EstadoAgendamento> = {
+  AGUARDANDO_PAGAMENTO: AguardandoPagamento,
   PENDENTE: Pendente,
   CONFIRMADO: Confirmado,
   CONCLUIDO: Concluido,

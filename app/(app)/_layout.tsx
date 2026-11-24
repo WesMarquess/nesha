@@ -97,6 +97,8 @@ export default function AppLayout() {
       <Tabs.Screen name="cancelar/[id]" options={{ href: null }} />
       <Tabs.Screen name="avaliar/[id]" options={{ href: null }} />
       <Tabs.Screen name="agendar/[prestadorId]" options={{ href: null }} />
+      <Tabs.Screen name="pagamento/[id]" options={{ href: null, ...semBarraDoTabs }} />
+      <Tabs.Screen name="confirmacao/[id]" options={{ href: null, ...semBarraDoTabs }} />
       <Tabs.Screen name="configuracoes" options={{ href: null, ...semBarraDoTabs }} />
       <Tabs.Screen name="alterar-senha" options={{ href: null }} />
 

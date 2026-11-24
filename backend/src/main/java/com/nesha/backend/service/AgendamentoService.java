@@ -3,14 +3,17 @@ package com.nesha.backend.service;
 import com.nesha.backend.dto.AgendamentoResponse;
 import com.nesha.backend.dto.AvaliarAgendamentoRequest;
 import com.nesha.backend.dto.CriarAgendamentoRequest;
+import com.nesha.backend.dto.PagamentoIniciadoResponse;
 import com.nesha.backend.entity.Agendamento;
 import com.nesha.backend.entity.Endereco;
 import com.nesha.backend.entity.Perfil;
 import com.nesha.backend.entity.PrestadorPerfil;
 import com.nesha.backend.entity.StatusAgendamento;
+import com.nesha.backend.entity.StatusPagamento;
 import com.nesha.backend.entity.UnidadePreco;
 import com.nesha.backend.entity.Usuario;
 import com.nesha.backend.exception.ApiException;
+import com.nesha.backend.pagamento.GatewayPagamento;
 import com.nesha.backend.repository.AgendamentoRepository;
 import com.nesha.backend.repository.PrestadorPerfilRepository;
 import com.nesha.backend.repository.UsuarioRepository;
@@ -50,16 +53,19 @@ public class AgendamentoService {
     private final UsuarioRepository usuarioRepository;
     private final PrestadorPerfilRepository prestadorPerfilRepository;
     private final ReputacaoService reputacaoService;
+    private final GatewayPagamento gatewayPagamento;
 
     public AgendamentoService(
             AgendamentoRepository agendamentoRepository,
             UsuarioRepository usuarioRepository,
             PrestadorPerfilRepository prestadorPerfilRepository,
-            ReputacaoService reputacaoService) {
+            ReputacaoService reputacaoService,
+            GatewayPagamento gatewayPagamento) {
         this.agendamentoRepository = agendamentoRepository;
         this.usuarioRepository = usuarioRepository;
         this.prestadorPerfilRepository = prestadorPerfilRepository;
         this.reputacaoService = reputacaoService;
+        this.gatewayPagamento = gatewayPagamento;
     }
 
     @Transactional
@@ -93,15 +99,19 @@ public class AgendamentoService {
 
         Endereco e = cliente.getEndereco();
         String observacoes = request.observacoes() == null ? "" : request.observacoes().trim();
+        BigDecimal valor = calcularValor(prestador, inicio, fim);
+        // Com preço definido, o cliente paga antes; "a combinar" vai direto para o prestador.
+        boolean cobrar = valor != null && valor.signum() > 0;
 
         Agendamento agendamento = Agendamento.builder()
                 .cliente(cliente)
                 .prestador(prestador.getUsuario())
                 .servico(prestador.getServicoPrincipal())
-                .valor(calcularValor(prestador, inicio, fim))
+                .valor(valor)
                 .inicio(inicio)
                 .fim(fim)
-                .status(StatusAgendamento.PENDENTE)
+                .status(cobrar ? StatusAgendamento.AGUARDANDO_PAGAMENTO : StatusAgendamento.PENDENTE)
+                .pagamentoStatus(cobrar ? StatusPagamento.AGUARDANDO : null)
                 .endereco(new Endereco(
                         e.getCep(), e.getLogradouro(), e.getNumero(), e.getComplemento(), e.getBairro(), e.getCidade(), e.getUf()))
                 .observacoes(observacoes.isEmpty() ? null : observacoes)
@@ -118,6 +128,7 @@ public class AgendamentoService {
                 : agendamentoRepository.findByPrestadorIdOrderByInicioAsc(logado.getId());
 
         return todos.stream()
+                .filter(a -> participa(a, logado))
                 .filter(a -> status == null || a.getStatus() == status)
                 .map(this::resposta)
                 .toList();
@@ -146,6 +157,7 @@ public class AgendamentoService {
 
         agendamento.setStatus(agendamento.getStatus().cancelar());
         agendamento.setMotivoCancelamento(motivo);
+        estornarSePago(agendamento);
         return resposta(agendamento);
     }
 
@@ -172,6 +184,7 @@ public class AgendamentoService {
 
         String texto = motivo == null ? "" : motivo.trim();
         agendamento.setMotivoCancelamento(texto.isEmpty() ? null : texto);
+        estornarSePago(agendamento);
         return resposta(agendamento);
     }
 
@@ -202,6 +215,49 @@ public class AgendamentoService {
         agendamento.setDestaques(new ArrayList<>(new LinkedHashSet<>(destaques)));
         agendamento.setAvaliadoEm(Instant.now());
         return resposta(agendamento);
+    }
+
+    // Cria o checkout do Mercado Pago (Checkout Pro) para o cliente pagar.
+    @Transactional
+    public PagamentoIniciadoResponse iniciarPagamento(Usuario logado, UUID id, String retornoUrl) {
+        Agendamento agendamento = doCliente(id, logado);
+        agendamento.getStatus().pagar(); // só valida: o status muda quando o pagamento for aprovado
+
+        GatewayPagamento.Checkout checkout = gatewayPagamento.iniciar(agendamento, retornoUrl);
+        agendamento.setPagamentoPreferenciaId(checkout.referencia());
+        agendamento.setPagamentoStatus(StatusPagamento.AGUARDANDO);
+        agendamento.setPagamentoAtualizadoEm(Instant.now());
+
+        return new PagamentoIniciadoResponse(checkout.urlCheckout(), gatewayPagamento.simulado());
+    }
+
+    // Consulta o pagamento no Mercado Pago (sem webhook: o app pergunta ao voltar do checkout).
+    // Aprovado, o agendamento vira PENDENTE e chega ao prestador.
+    @Transactional
+    public AgendamentoResponse verificarPagamento(Usuario logado, UUID id) {
+        Agendamento agendamento = doCliente(id, logado);
+
+        if (agendamento.getStatus() == StatusAgendamento.AGUARDANDO_PAGAMENTO) {
+            GatewayPagamento.Resultado resultado = gatewayPagamento.consultar(agendamento);
+            agendamento.setPagamentoStatus(resultado.status());
+            agendamento.setPagamentoAtualizadoEm(Instant.now());
+
+            if (resultado.status() == StatusPagamento.APROVADO) {
+                agendamento.setPagamentoId(resultado.pagamentoId());
+                agendamento.setStatus(agendamento.getStatus().pagar());
+            }
+        }
+        return resposta(agendamento);
+    }
+
+    // Recusado ou cancelado depois de pago: devolve o dinheiro. Se o estorno falhar, a transação
+    // é desfeita e o agendamento continua como estava.
+    private void estornarSePago(Agendamento agendamento) {
+        if (agendamento.getPagamentoStatus() == StatusPagamento.APROVADO && agendamento.getPagamentoId() != null) {
+            gatewayPagamento.estornar(agendamento.getPagamentoId());
+            agendamento.setPagamentoStatus(StatusPagamento.ESTORNADO);
+            agendamento.setPagamentoAtualizadoEm(Instant.now());
+        }
     }
 
     private void validarPeriodo(Instant inicio, Instant fim, List<Integer> diasAtendimento) {
@@ -242,8 +298,11 @@ public class AgendamentoService {
         return agendamentoRepository.findById(id).orElseThrow(this::naoEncontrado);
     }
 
+    // O prestador só passa a ver o agendamento depois do pagamento aprovado.
     private static boolean participa(Agendamento a, Usuario usuario) {
-        return a.getCliente().getId().equals(usuario.getId()) || a.getPrestador().getId().equals(usuario.getId());
+        boolean prestadorVe = a.getStatus() != StatusAgendamento.AGUARDANDO_PAGAMENTO;
+        return a.getCliente().getId().equals(usuario.getId())
+                || (prestadorVe && a.getPrestador().getId().equals(usuario.getId()));
     }
 
     // Quem não participa recebe 404 (não revela que o agendamento existe); a outra parte, 403.
@@ -257,7 +316,7 @@ public class AgendamentoService {
 
     private Agendamento doPrestador(UUID id, Usuario logado) {
         Agendamento a = carregar(id);
-        if (a.getPrestador().getId().equals(logado.getId())) {
+        if (a.getPrestador().getId().equals(logado.getId()) && participa(a, logado)) {
             return a;
         }
         throw participa(a, logado) ? acessoNegado("Só o prestador pode fazer isso.") : naoEncontrado();

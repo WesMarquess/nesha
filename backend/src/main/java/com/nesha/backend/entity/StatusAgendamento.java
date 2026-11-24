@@ -6,6 +6,18 @@ import org.springframework.http.HttpStatus;
 // Padrão State (GoF): cada status decide quais transições aceita, espelhando
 // src/data/estadosAgendamento.ts no app. Ver docs/DESIGN_PATTERNS.md.
 public enum StatusAgendamento {
+    // Criado pelo cliente, ainda sem pagamento aprovado: o prestador ainda não vê.
+    AGUARDANDO_PAGAMENTO {
+        @Override
+        public StatusAgendamento pagar() {
+            return PENDENTE;
+        }
+
+        @Override
+        public StatusAgendamento cancelar() {
+            return CANCELADO;
+        }
+    },
     PENDENTE {
         @Override
         public StatusAgendamento aceitar() {
@@ -45,6 +57,10 @@ public enum StatusAgendamento {
     CANCELADO;
 
     // Por padrão nenhuma transição é permitida; cada status libera as suas.
+    public StatusAgendamento pagar() {
+        throw invalida("pagar");
+    }
+
     public StatusAgendamento aceitar() {
         throw invalida("aceitar");
     }
@@ -74,6 +90,6 @@ public enum StatusAgendamento {
         return new ApiException(
                 HttpStatus.CONFLICT,
                 "TRANSICAO_INVALIDA",
-                "Não é possível %s um agendamento %s.".formatted(acao, name().toLowerCase()));
+                "Não é possível %s um agendamento %s.".formatted(acao, name().toLowerCase().replace("_", " ")));
     }
 }

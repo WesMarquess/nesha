@@ -3,6 +3,7 @@ import { STATUS_LABEL, StatusAgendamento } from '../data/agendamentos';
 import { colors } from '../theme/colors';
 
 const tons: Record<StatusAgendamento, { bg: string; fg: string }> = {
+  AGUARDANDO_PAGAMENTO: { bg: colors.warningSoft, fg: colors.warningText },
   CONFIRMADO: { bg: colors.primarySoft, fg: colors.primary },
   PENDENTE: { bg: colors.warningSoft, fg: colors.warningText },
   CONCLUIDO: { bg: colors.primarySoft, fg: colors.primary },

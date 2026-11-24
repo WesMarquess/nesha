@@ -4,9 +4,9 @@
 > Cobre as telas do **Cliente** e do **Prestador**, o modelo de dados, as regras de negócio já
 > implementadas, as limitações atuais e a proposta de integração com o backend.
 >
-> **Estado atual:** integrado ao backend. Os agendamentos vêm de `/api/v1/agendamentos` (seção 11) e o
-> cliente cria um agendamento pela tela `agenda-contratacao` (`/agendar/[prestadorId]`). O pagamento ainda
-> não existe: o agendamento nasce `PENDENTE` e o prestador aceita ou recusa. Com
+> **Estado atual:** integrado ao backend. Os agendamentos vêm de `/api/v1/agendamentos` (seção 11). O
+> cliente escolhe dia e horário (`/agendar/[prestadorId]`), paga pelo Mercado Pago (`/pagamento/[id]`,
+> seção 13) e só então a solicitação chega ao prestador, que aceita ou recusa. Com
 > `EXPO_PUBLIC_USE_MOCK=true` o app usa dados simulados (`src/services/agendamentos.ts`).
 
 ## Sumário
@@ -48,6 +48,8 @@ As pastas entre parênteses, como `(app)`, são grupos do Expo Router e **não a
 | Rota | Arquivo | Perfil | Função |
 |---|---|---|---|
 | `/agendar/[prestadorId]` | `app/(app)/agendar/[prestadorId].tsx` | Cliente | Escolher dia e horário e solicitar o agendamento (`agenda-contratacao`) |
+| `/pagamento/[id]` | `app/(app)/pagamento/[id].tsx` | Cliente | Pagar pelo Mercado Pago (`pagamento` no Figma) |
+| `/confirmacao/[id]` | `app/(app)/confirmacao/[id].tsx` | Cliente | Pagamento confirmado (`confirmacao` no Figma) |
 | `/agenda` | `app/(app)/agenda.tsx` | Cliente | Lista "Minha Agenda" com filtro por status (aceita `?aba=PENDENTE` etc.) |
 | `/agendamento/[id]` | `app/(app)/agendamento/[id].tsx` | Cliente | Detalhes do agendamento, copiar telefone, botões de cancelar/avaliar |
 | `/cancelar/[id]` | `app/(app)/cancelar/[id].tsx` | Cliente | Cancelamento com motivo obrigatório e confirmação |
@@ -95,7 +97,10 @@ export const PULAR_LOGIN = false; // true pula o login e abre direto as telas
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDENTE: cliente solicita (/agendar)
+    [*] --> AGUARDANDO_PAGAMENTO: cliente solicita (/agendar)
+    [*] --> PENDENTE: cliente solicita, sem preço definido
+    AGUARDANDO_PAGAMENTO --> PENDENTE: pagamento aprovado
+    AGUARDANDO_PAGAMENTO --> CANCELADO: Cliente cancela
     PENDENTE --> CONFIRMADO: Prestador aceita
     PENDENTE --> CANCELADO: Prestador recusa
     PENDENTE --> CANCELADO: Cliente cancela com motivo
@@ -106,7 +111,8 @@ stateDiagram-v2
 
 | Status | Rótulo exibido | Significado |
 |---|---|---|
-| `PENDENTE` | Pendente | Solicitado pelo cliente, aguardando resposta do prestador |
+| `AGUARDANDO_PAGAMENTO` | Aguardando pagamento | Criado pelo cliente; só chega ao prestador depois de pago. Aparece na aba "Pendentes" do cliente, com "Pagar agora" |
+| `PENDENTE` | Pendente | Pago (ou sem preço), aguardando resposta do prestador |
 | `CONFIRMADO` | Confirmado | Prestador aceitou; aparece em "Próximos" (cliente) e "Confirmados" (prestador) |
 | `CONCLUIDO` | Concluído | Serviço realizado; pode ser avaliado |
 | `CANCELADO` | Cancelado | Cancelado pelo cliente (com motivo) ou recusado pelo prestador |
@@ -115,7 +121,8 @@ Quem pode fazer o quê, conforme o código atual:
 
 | Ação | Quem | De → Para | Função |
 |---|---|---|---|
-| Solicitar | Cliente | → `PENDENTE` | `criarAgendamento` |
+| Solicitar | Cliente | → `AGUARDANDO_PAGAMENTO` (ou `PENDENTE` sem preço) | `criarAgendamento` |
+| Pagar | Cliente | `AGUARDANDO_PAGAMENTO` → `PENDENTE` | `iniciarPagamento` + `verificarPagamento` |
 | Aceitar solicitação | Prestador | `PENDENTE` → `CONFIRMADO` | `aceitarSolicitacao` |
 | Recusar solicitação | Prestador | `PENDENTE` → `CANCELADO` | `recusarSolicitacao` |
 | Cancelar agendamento | Cliente | `PENDENTE` ou `CONFIRMADO` → `CANCELADO` (com motivo) | `cancelarAgendamento` |
@@ -379,7 +386,7 @@ tela quando o telefone é copiado.
 
 | # | Item | Detalhe |
 |---|---|---|
-| 1 | Sem pagamento | A tela `pagamento` e a `confirmacao` dependem da decisão sobre o Mercado Pago; o agendamento é criado `PENDENTE` sem pagar |
+| 1 | Pagamento só em teste | Usa as credenciais de teste do Mercado Pago (seção 13). Sem webhook: o app confere o pagamento ao voltar do checkout |
 | 2 | Horários fixos | Três períodos por dia (08h–12h, 13h–17h e 17h–20h), como no Figma; o prestador ainda não define horários próprios |
 | 3 | Conclusão a qualquer momento | O prestador pode marcar como concluído mesmo antes da data, para facilitar a demonstração |
 | 4 | Recusa sem motivo na tela | O backend aceita um motivo opcional na recusa, mas o app ainda não pede |
@@ -405,6 +412,8 @@ cada usuário só vê os próprios agendamentos.
 | POST | `/agendamentos/{id}/recusar` | Prestador | `{ motivo? }` |
 | POST | `/agendamentos/{id}/concluir` | Prestador | Marcar como concluído |
 | POST | `/agendamentos/{id}/avaliacao` | Cliente | `{ nota, destaques, comentario }` |
+| POST | `/agendamentos/{id}/pagamento` | Cliente | `{ retornoUrl? }` → `{ urlCheckout, simulado }` (seção 13) |
+| POST | `/agendamentos/{id}/pagamento/verificar` | Cliente | Consulta o Mercado Pago; aprovado, vira `PENDENTE` |
 | GET | `/prestadores?servico=` | Ambos (logado) | Lista de profissionais (só os "Online") |
 | GET | `/prestadores/{id}` | Ambos (logado) | Perfil público do profissional (nota, avaliações por nota, serviços realizados) |
 | GET | `/prestadores/{id}/horarios-ocupados?de=&ate=` | Ambos (logado) | Horários já pedidos ou confirmados (datas `YYYY-MM-DD`, até 62 dias) |
@@ -444,6 +453,9 @@ O calendário do prestador filtra a lista de `GET /agendamentos` no app; não h�
 ### 11.2 Regras garantidas pelo backend
 
 - **Transições** do ciclo de vida (seção 3); qualquer outra é recusada com `409 TRANSICAO_INVALIDA`.
+- **Pagamento:** o prestador não vê agendamentos `AGUARDANDO_PAGAMENTO` (listas e detalhes respondem como se
+  não existissem). Recusado pelo prestador ou cancelado pelo cliente depois de pago, o backend **estorna** o
+  pagamento no Mercado Pago (`pagamentoStatus: "ESTORNADO"`); se o estorno falhar, nada muda.
 - **Autorização:** quem não participa do agendamento recebe `404`; a outra parte tentando uma ação que não é dela
   recebe `403 ACESSO_NEGADO` (ex.: prestador cancelando, cliente aceitando).
 - **Solicitação:** só clientes; o prestador precisa estar "Online"; o horário precisa ser futuro, ter até 12 horas
@@ -468,6 +480,7 @@ O calendário do prestador filtra a lista de `GET /agendamentos` no app; não h�
 | 409 | `AVALIACAO_JA_ENVIADA` | Agendamento já avaliado |
 | 409 | `CONFLITO_DE_HORARIO` | Prestador já tem compromisso confirmado no período |
 | 409 | `PRESTADOR_INDISPONIVEL` | Prestador "Offline" |
+| 502 | `PAGAMENTO_INDISPONIVEL` | Erro ao falar com o Mercado Pago (credencial inválida, API fora do ar) |
 
 ---
 
@@ -509,3 +522,56 @@ nesha-main/
     ├── API.md                               # Contrato app ↔ backend (auth)
     └── AGENDA.md                            # Este documento
 ```
+
+---
+
+## 13. Pagamento (Mercado Pago, Checkout Pro)
+
+O cliente paga antes de a solicitação chegar ao prestador, pelo **Checkout Pro** do Mercado Pago (Pix, cartão
+ou saldo da conta, na página do Mercado Pago).
+
+**Fluxo**
+
+1. `/agendar/[prestadorId]` → **Ir para Pagamento** cria o agendamento (`AGUARDANDO_PAGAMENTO`) e abre `/pagamento/[id]`.
+2. **Confirmar e Pagar** → `POST /agendamentos/{id}/pagamento`. O backend cria uma *preferência* no Mercado Pago
+   (`POST https://api.mercadopago.com/checkout/preferences`, com `external_reference` = id do agendamento) e
+   devolve o `urlCheckout`.
+3. O app abre o checkout (`expo-web-browser`; na web, em outra aba). O `retornoUrl` (deep link do app) vira as
+   `back_urls` da preferência; o Mercado Pago não aceita `localhost`, então na web elas não são enviadas.
+4. Ao voltar, o app chama `POST /agendamentos/{id}/pagamento/verificar`. O backend busca o pagamento
+   (`GET /v1/payments/search?external_reference=...`). Aprovado → `PENDENTE` e tela `/confirmacao/[id]`.
+   Não usamos webhook porque o backend roda local, sem endereço público.
+5. Recusa ou cancelamento depois de pago → `POST /v1/payments/{id}/refunds` (estorno total).
+
+No backend, `GatewayPagamento` é a interface; `MercadoPagoGateway` é o adaptador da API (padrão Adapter) e
+`PagamentoSimulado` é usado quando não há Access Token.
+
+**Configurar as credenciais**
+
+1. Crie uma conta Mercado Pago, entre em https://www.mercadopago.com.br/developers → **Suas integrações** →
+   **Criar aplicação** (produto **Checkout Pro**).
+2. No card da aplicação, selecione **Teste** → **Credenciais** e copie o **Access Token** de teste.
+3. Guarde o token **só na sua máquina** (o repositório é público; nunca coloque o token no código):
+   copie `backend/local.properties.example` para `backend/local.properties` e cole o token nele.
+   Esse arquivo é ignorado pelo git e o backend o lê sozinho, então basta rodar como sempre:
+
+   ```bash
+   cd backend
+   ./mvnw spring-boot:run
+   ```
+
+   Alternativa sem arquivo: a variável de ambiente `MERCADOPAGO_ACCESS_TOKEN`
+   (ex.: `MERCADOPAGO_ACCESS_TOKEN='...' ./mvnw spring-boot:run`).
+
+   No log aparece "Pagamentos pelo Mercado Pago (Checkout Pro)." Sem token, aparece o aviso de que os
+   pagamentos serão **simulados** (aprovados na hora, sem abrir checkout), útil para desenvolver. Os testes
+   automáticos (`./mvnw test`) sempre usam o pagamento simulado, mesmo com o `local.properties`.
+
+**Pagar no teste**
+
+- Faça login no checkout com a **conta de teste Comprador** (em **Contas de teste** na aplicação). Não use a
+  conta dona da aplicação.
+- Use um dos **cartões de teste** da página oficial abaixo (número, CVV e validade estão lá). O **nome do
+  titular** define o resultado: `APRO` aprovado, `OTHE` recusado, `CONT` pendente. Pix fica pendente no
+  ambiente de teste.
+- Referência: https://www.mercadopago.com.br/developers/pt/docs/checkout-pro/integration-test/test-purchases

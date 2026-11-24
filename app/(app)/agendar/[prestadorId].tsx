@@ -18,6 +18,7 @@ import { Notice } from '../../../src/components/Notice';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import { SeletorDeDias } from '../../../src/components/SeletorDeDias';
 import { criarAgendamento, formatarValor, mensagemDeErro } from '../../../src/data/agendamentos';
+import { estadoDe } from '../../../src/data/estadosAgendamento';
 import { usePrestador } from '../../../src/data/usePrestador';
 import { horariosOcupados } from '../../../src/services/agendamentos';
 import { colors } from '../../../src/theme/colors';
@@ -124,12 +125,17 @@ export default function AgendarServico() {
     setErro('');
     try {
       const texto = observacoes.trim();
-      await criarAgendamento({
+      const novo = await criarAgendamento({
         prestadorId: p.id,
         inicio: isoComFuso(noDia(diaEscolhido, selecionado.inicio)),
         fim: isoComFuso(noDia(diaEscolhido, selecionado.fim)),
         ...(texto ? { observacoes: texto } : {}),
       });
+      // Com preço definido, paga antes de a solicitação chegar ao profissional.
+      if (estadoDe(novo).podePagar) {
+        router.replace(`/pagamento/${novo.id}` as Href);
+        return;
+      }
       deixarAviso(`Solicitação enviada! ${p.nome.split(' ')[0]} vai confirmar o horário.`);
       router.navigate({ pathname: '/agenda', params: { aba: 'PENDENTE' } } as Href);
     } catch (error) {
@@ -224,14 +230,15 @@ export default function AgendarServico() {
           {!!erro && <Notice tone="error" icon="alert-circle-outline" text={erro} />}
 
           <Button
-            title="Solicitar Agendamento"
+            title={p.preco != null ? 'Ir para Pagamento' : 'Solicitar Agendamento'}
             loading={enviando}
             disabled={!selecionado}
             onPress={solicitar}
           />
           <Text style={styles.dica}>
-            O profissional recebe sua solicitação e confirma o horário. O pagamento será feito depois,
-            pelo app.
+            {p.preco != null
+              ? 'Depois do pagamento, o profissional recebe sua solicitação e confirma o horário.'
+              : 'O valor deste profissional é a combinar: ele recebe sua solicitação e confirma o horário.'}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
