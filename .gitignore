@@ -51,3 +51,6 @@ app-example
 .env.example
 
 .env.ts
+
+# banco H2 em arquivo do perfil dev
+backend/data/
