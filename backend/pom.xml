@@ -115,6 +115,16 @@
 
 	<build>
 		<plugins>
+			<!-- Os testes nunca chamam o Mercado Pago de verdade, mesmo com backend/local.properties. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<nesha.mercadopago.access-token> </nesha.mercadopago.access-token>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

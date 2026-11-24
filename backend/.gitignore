@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Credenciais locais (Access Token do Mercado Pago) ###
+local.properties

@@ -1,0 +1,4 @@
+# Copie este arquivo para local.properties (na pasta backend/) e cole o Access Token de TESTE
+# da sua aplicação no Mercado Pago. O local.properties é ignorado pelo git: o token não sobe
+# para o GitHub. Veja docs/AGENDA.md, seção 13.
+nesha.mercadopago.access-token=APP_USR-cole-aqui-o-access-token-de-teste

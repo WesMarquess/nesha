@@ -551,15 +551,21 @@ No backend, `GatewayPagamento` é a interface; `MercadoPagoGateway` é o adaptad
 1. Crie uma conta Mercado Pago, entre em https://www.mercadopago.com.br/developers → **Suas integrações** →
    **Criar aplicação** (produto **Checkout Pro**).
 2. No card da aplicação, selecione **Teste** → **Credenciais** e copie o **Access Token** de teste.
-3. Rode o backend com a variável de ambiente (nunca coloque o token no código ou no Git):
+3. Guarde o token **só na sua máquina** (o repositório é público; nunca coloque o token no código):
+   copie `backend/local.properties.example` para `backend/local.properties` e cole o token nele.
+   Esse arquivo é ignorado pelo git e o backend o lê sozinho, então basta rodar como sempre:
 
    ```bash
    cd backend
-   MERCADOPAGO_ACCESS_TOKEN='cole-aqui-o-access-token-de-teste' ./mvnw spring-boot:run
+   ./mvnw spring-boot:run
    ```
 
-   No log aparece "Pagamentos pelo Mercado Pago (Checkout Pro)." Sem a variável, aparece o aviso de que os
-   pagamentos serão **simulados** (aprovados na hora, sem abrir checkout), útil para desenvolver.
+   Alternativa sem arquivo: a variável de ambiente `MERCADOPAGO_ACCESS_TOKEN`
+   (ex.: `MERCADOPAGO_ACCESS_TOKEN='...' ./mvnw spring-boot:run`).
+
+   No log aparece "Pagamentos pelo Mercado Pago (Checkout Pro)." Sem token, aparece o aviso de que os
+   pagamentos serão **simulados** (aprovados na hora, sem abrir checkout), útil para desenvolver. Os testes
+   automáticos (`./mvnw test`) sempre usam o pagamento simulado, mesmo com o `local.properties`.
 
 **Pagar no teste**
 
