@@ -17,7 +17,7 @@ Hoje o app já cobre o fluxo de autenticação (login/cadastro de cliente) e a a
 |---|---|
 | App | Expo Router, React Native, TypeScript |
 | Backend | Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA |
-| Banco de dados | H2 em memória (dev) / PostgreSQL (prod) |
+| Banco de dados | H2 em arquivo (dev) / PostgreSQL (prod) |
 
 ## Estrutura
 
@@ -67,7 +67,9 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-Sobe em `http://0.0.0.0:8080` com banco H2 em memória — não precisa de nenhuma configuração extra. Deixe esse terminal aberto enquanto testa o app.
+Sobe em `http://0.0.0.0:8080` com banco H2 em arquivo (`backend/data/`, os dados continuam depois de reiniciar) — não precisa de nenhuma configuração extra. Deixe esse terminal aberto enquanto testa o app.
+
+Na primeira vez, o backend cria um cliente e dois prestadores para cada serviço do catálogo, todos com a senha `Nesha@123`. A lista completa está em [docs/CONTAS_DE_TESTE.md](docs/CONTAS_DE_TESTE.md). Para começar do zero, pare o backend e apague a pasta `backend/data`.
 
 ### 4. Rodar o app
 

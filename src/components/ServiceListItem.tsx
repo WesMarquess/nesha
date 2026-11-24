@@ -88,7 +88,9 @@ export default function ServiceListItem({ service, selected, onToggleSelected }:
 
           <TouchableOpacity 
             style={styles.button} 
-            onPress={() => router.push('/lista-profissionais')}
+            onPress={() =>
+              router.push({ pathname: '/lista-profissionais', params: { serviceIds: service.id } })
+            }
             accessibilityRole="button"
           >
             <Text style={styles.buttonText}>Ver profissionais</Text>

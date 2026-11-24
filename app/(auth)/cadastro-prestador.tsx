@@ -624,7 +624,14 @@ export default function CadastroPrestador() {
 
             <Text style={styles.termsText}>
               Aceito receber ofertas de trabalho e concordo com os{' '}
-              <Text style={styles.link}>Termos de Parceria</Text>.
+              <Text
+                style={styles.link}
+                onPress={() => router.push({ pathname: '/termos', params: { tipo: 'parceria' } })}
+                accessibilityRole="link"
+              >
+                Termos de Parceria
+              </Text>
+              .
             </Text>
           </View>
           {!!termsError && <Text style={styles.termsError}>{termsError}</Text>}
